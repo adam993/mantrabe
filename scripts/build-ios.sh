@@ -34,7 +34,7 @@ if [ "$OS" != "Darwin" ]; then
       1. Copy this whole folder to your Mac.
       2. cd mantrabe && yarn install
       3. yarn cap add ios
-      4. cp public/church_bell.wav ios/App/App/public/church_bell.wav
+      4. cp public/*.wav ios/App/App/public/
       5. yarn cap sync ios
       6. yarn cap open ios       # opens Xcode
       7. In Xcode: Product > Archive > Distribute App.
@@ -50,9 +50,9 @@ fi
 
 # iOS resources for LocalNotifications custom sounds need to be inside the
 # bundle. Capacitor copies anything under ios/App/App/public into the bundle,
-# so a copy there is reachable from the plugin as `church_bell.wav`.
+# so each WAV there is reachable from the plugin as `<name>.wav`.
 mkdir -p ios/App/App/public
-cp public/church_bell.wav ios/App/App/public/church_bell.wav
+cp public/*.wav ios/App/App/public/
 
 echo "==> Syncing Capacitor with iOS"
 yarn cap sync ios

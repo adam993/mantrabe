@@ -1,11 +1,14 @@
 // In-app bell chime player.
-// The bundled audio file (public/church_bell.wav) is the same sound the OS
-// uses for native local notifications. For in-app preview and web/Electron
-// notifications we play it via HTMLAudioElement. If that fails (e.g.
-// autoplay-restricted contexts), we synthesize a soft bell with Web Audio
-// so the user always hears *something* on test.
+//
+// Plays one of the bundled WAVs (catalog in src/sounds.js). On native
+// platforms the OS notification uses the same file via
+// LocalNotifications, so what you hear here in-app matches what fires
+// at reminder time. The Web Audio fallback only kicks in if HTMLAudio
+// playback is blocked (autoplay-restricted contexts).
 
-let bellAudio = null;
+import { soundById, DEFAULT_SOUND_ID } from './sounds.js';
+
+const audioCache = new Map(); // soundId -> HTMLAudioElement
 let audioCtx = null;
 
 function getAudioCtx() {
@@ -16,28 +19,32 @@ function getAudioCtx() {
   return audioCtx;
 }
 
-export async function playBellChime() {
-  // Prefer the bundled WAV — same sound the OS notifications use.
-  // Vite copies public/bell.wav to the dist root, and we set base: './'
-  // so a path relative to BASE_URL works in both dev and prod.
+function audioFor(soundId) {
+  const sound = soundById(soundId);
+  let el = audioCache.get(sound.id);
+  if (!el) {
+    const base = (import.meta && import.meta.env && import.meta.env.BASE_URL) || './';
+    el = new Audio(`${base}${sound.id}.wav`);
+    el.preload = 'auto';
+    audioCache.set(sound.id, el);
+  }
+  return el;
+}
+
+export async function playBellChime(soundId = DEFAULT_SOUND_ID) {
   try {
-    if (!bellAudio) {
-      const base = (import.meta && import.meta.env && import.meta.env.BASE_URL) || './';
-      bellAudio = new Audio(`${base}church_bell.wav`);
-      bellAudio.preload = 'auto';
-    }
-    bellAudio.currentTime = 0;
-    await bellAudio.play();
+    const el = audioFor(soundId);
+    el.currentTime = 0;
+    await el.play();
     return;
   } catch {
-    // Fall through to synthesized fallback (Web Audio).
+    // Fall through to synthesized fallback.
   }
   synthesizeBell();
 }
 
-// Additive synthesis of a soft bell: a few inharmonic partials with
-// exponentially decaying amplitude envelopes. This is the same shape the
-// generate-bell.cjs script produces for the bundled WAV.
+// Generic soft bell synthesized via Web Audio — used only as a last resort
+// when HTMLAudio is blocked. We don't try to mimic each cataloged sound here.
 function synthesizeBell() {
   const ctx = getAudioCtx();
   if (!ctx) return;
@@ -61,7 +68,6 @@ function synthesizeBell() {
     osc.frequency.value = p.freq;
 
     const gain = ctx.createGain();
-    // Quick attack then exponential decay.
     gain.gain.setValueAtTime(0.0001, now);
     gain.gain.exponentialRampToValueAtTime(p.amp, now + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + p.decay);

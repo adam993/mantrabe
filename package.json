@@ -1,6 +1,6 @@
 {
   "name": "mantrabe",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "Mantrabe — a serene cross-platform mantra reminder. Local-first, no cloud, no auth.",
   "type": "module",
   "main": "electron/main.cjs",

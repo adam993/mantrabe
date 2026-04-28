@@ -4,8 +4,7 @@
   "webDir": "dist",
   "plugins": {
     "LocalNotifications": {
-      "iconColor": "#b08d57",
-      "sound": "church_bell.wav"
+      "iconColor": "#b08d57"
     }
   }
 }

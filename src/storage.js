@@ -9,6 +9,7 @@
 
 import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
+import { DEFAULT_SOUND_ID } from './sounds.js';
 
 const KEY = 'mantrabe.mantras.v1';
 const PERMISSION_KEY = 'mantrabe.notifPermissionAsked.v1';
@@ -58,7 +59,9 @@ export async function loadMantras() {
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    // Backfill soundId on mantras created before sound choice existed.
+    return parsed.map((m) => (m.soundId ? m : { ...m, soundId: DEFAULT_SOUND_ID }));
   } catch {
     return [];
   }
@@ -81,6 +84,7 @@ export function makeMantra(input = {}) {
     activeHours: input.activeHours || { start: 9, end: 21 },
     activeDays: input.activeDays || [true, true, true, true, true, false, false],
     enabled: input.enabled ?? true,
+    soundId: input.soundId || DEFAULT_SOUND_ID,
     createdAt: input.createdAt ?? Date.now(),
     updatedAt: Date.now(),
   };

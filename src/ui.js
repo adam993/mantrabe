@@ -3,6 +3,8 @@
 
 import { describeMantra, ONCE_A_DAY } from './scheduler.js';
 import { VERSION } from './version.js';
+import { SOUNDS, DEFAULT_SOUND_ID } from './sounds.js';
+import { playBellChime } from './bell-chime.js';
 
 // --- DOM helpers -------------------------------------------------------------
 
@@ -199,6 +201,7 @@ function renderEditor(state, actions, draft) {
     onceADay ? renderTimeControl(draft, actions) : renderHoursControl(draft, actions),
   ));
   wrap.append(renderField('Active days', renderDaysControl(draft, actions)));
+  wrap.append(renderField('Sound', renderSoundControl(draft, actions)));
 
   wrap.append(
     h('div', { class: 'editor-actions' }, [
@@ -318,6 +321,34 @@ function renderHourSelect(value, onChange) {
     sel.append(opt);
   }
   return sel;
+}
+
+function renderSoundControl(draft, actions) {
+  const currentId = draft.soundId || DEFAULT_SOUND_ID;
+  const select = h('select', {
+    class: 'input input--select',
+    onchange: (e) => {
+      const newId = e.target.value;
+      actions.patchDraft({ soundId: newId });
+      // Preview the chosen sound on change so users hear it before saving.
+      playBellChime(newId).catch(() => {});
+    },
+  });
+  for (const s of SOUNDS) {
+    const opt = h('option', { value: s.id }, s.label);
+    if (s.id === currentId) opt.setAttribute('selected', '');
+    select.append(opt);
+  }
+  const preview = h('button', {
+    type: 'button',
+    class: 'btn btn--ghost btn--small',
+    title: 'Play this sound',
+    'aria-label': 'Play this sound',
+    // Read straight from the live <select> so this stays in sync even
+    // when the change is followed by other patches that recreate `draft`.
+    onclick: () => playBellChime(select.value).catch(() => {}),
+  }, 'Play');
+  return h('div', { class: 'sound' }, [select, preview]);
 }
 
 function renderDaysControl(draft, actions) {

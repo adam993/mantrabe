@@ -15,6 +15,8 @@ cd "$(dirname "$0")/.."
 
 echo "==> Bumping build number"
 node scripts/version.cjs bump build
+# Read the post-bump version so the APK gets a unique, versioned filename.
+VERSION="$(node scripts/version.cjs show | awk '{print $1}')"
 
 echo "==> Building web assets"
 yarn build
@@ -24,12 +26,12 @@ if [ ! -d "android" ]; then
   yarn cap add android
 fi
 
-# Drop the bell into the Android raw resources so LocalNotifications can
-# reference it as `church_bell.wav`. (Capacitor's plugin looks in res/raw on
-# Android. The filename must use only lowercase / digits / underscores —
-# that's why the WAV is named with an underscore, not a dash.)
+# Drop every bundled bell sound into Android raw resources so the
+# LocalNotifications plugin can reference each one by filename.
+# Resource names must be lowercase / digits / underscores only — that's
+# why each WAV is already named with underscores.
 mkdir -p android/app/src/main/res/raw
-cp public/church_bell.wav android/app/src/main/res/raw/church_bell.wav
+cp public/*.wav android/app/src/main/res/raw/
 
 echo "==> Syncing Capacitor with Android"
 yarn cap sync android
@@ -40,13 +42,18 @@ echo "==> Building APK (debug)"
 OUT="android/app/build/outputs/apk/debug/app-debug.apk"
 if [ -f "$OUT" ]; then
   mkdir -p release
-  cp "$OUT" "release/mantrabe-android.apk"
+  DEST="release/mantrabe-android-${VERSION}.apk"
+  cp "$OUT" "$DEST"
+  # Also keep a stable "latest" copy without the version, so adb install
+  # commands in docs / shells don't have to know the current version.
+  cp "$OUT" "release/mantrabe-android-latest.apk"
   echo
   echo "==> Done. APK copied to:"
-  echo "    release/mantrabe-android.apk"
+  echo "    $DEST"
+  echo "    release/mantrabe-android-latest.apk"
   echo
   echo "    Install on a connected device with:"
-  echo "      adb install -r release/mantrabe-android.apk"
+  echo "      adb install -r $DEST"
 else
   echo "Build did not produce an APK at $OUT"
   exit 1

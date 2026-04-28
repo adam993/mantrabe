@@ -494,6 +494,13 @@ body {
   min-width: 110px;
 }
 
+.sound {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.sound .input--select { flex: 1; }
+
 .days {
   display: grid;
   grid-template-columns: repeat(7, 1fr);

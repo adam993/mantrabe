@@ -18,6 +18,7 @@ import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { computeNextOccurrences } from './scheduler.js';
 import { playBellChime } from './bell-chime.js';
+import { soundFile, DEFAULT_SOUND_ID } from './sounds.js';
 
 function isNative() {
   try {
@@ -104,7 +105,7 @@ async function rescheduleNative(mantras) {
     title: 'Mantrabe',
     body: e.mantra.text,
     schedule: { at: e.at, allowWhileIdle: true },
-    sound: 'church_bell.wav',
+    sound: soundFile(e.mantra.soundId),
     extra: { mantraId: e.mantra.id },
   }));
 
@@ -170,17 +171,16 @@ function fireWebNotification(mantra) {
       // mobile Safari restricts the constructor — just play the chime.
     }
   }
-  playBellChime().catch(() => {});
+  playBellChime(mantra && mantra.soundId).catch(() => {});
 }
 
 export async function fireTestNotification(mantra) {
+  const soundId = (mantra && mantra.soundId) || DEFAULT_SOUND_ID;
   if (isNative()) {
     // Play the chime in-app right away so the user gets immediate feedback
-    // regardless of whether the OS notification surfaces. (On Android, a
-    // mis-configured notification — e.g. invalid smallIcon — can be silently
-    // dropped, so without this the button felt broken.) The fireWebNotification
-    // path already plays the chime itself.
-    playBellChime().catch(() => {});
+    // regardless of whether the OS notification surfaces. fireWebNotification
+    // already plays the chime itself, so we only do it here for the native path.
+    playBellChime(soundId).catch(() => {});
     try {
       await LocalNotifications.schedule({
         notifications: [
@@ -189,7 +189,7 @@ export async function fireTestNotification(mantra) {
             title: 'Mantrabe',
             body: (mantra && mantra.text) || 'This is how a reminder will look.',
             schedule: { at: new Date(Date.now() + 1500) },
-            sound: 'church_bell.wav',
+            sound: soundFile(soundId),
           },
         ],
       });
@@ -198,5 +198,5 @@ export async function fireTestNotification(mantra) {
     }
     return;
   }
-  fireWebNotification(mantra || { text: 'This is how a reminder will look.' });
+  fireWebNotification(mantra || { text: 'This is how a reminder will look.', soundId });
 }
