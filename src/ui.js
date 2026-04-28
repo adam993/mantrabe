@@ -1,7 +1,7 @@
 // Tiny vanilla-JS view layer. Re-renders the whole app on state change.
 // State is owned by main.js; this module renders + emits intents via callbacks.
 
-import { describeMantra } from './scheduler.js';
+import { describeMantra, ONCE_A_DAY } from './scheduler.js';
 
 // --- DOM helpers -------------------------------------------------------------
 
@@ -68,7 +68,7 @@ function renderList(state, actions) {
   wrap.append(
     h('header', { class: 'topbar' }, [
       h('div', { class: 'topbar__title' }, [
-        h('span', { class: 'logo-dot' }),
+        ensoSvg(),
         h('span', {}, 'Mantrabe'),
       ]),
       h('button', {
@@ -93,14 +93,49 @@ function renderList(state, actions) {
 
 function renderEmptyState(actions) {
   return h('div', { class: 'empty' }, [
-    h('div', { class: 'empty__glyph' }, '🔔'),
-    h('h2', {}, 'No mantras yet'),
-    h('p', {}, 'Add a phrase you want to be reminded of throughout the day.'),
+    ensoLargeSvg(),
+    h('h2', {}, 'A still mind'),
+    h('p', {}, 'Add a phrase you want to return to throughout the day.'),
     h('button', {
       class: 'btn btn--primary',
       onclick: () => actions.openEditor(),
-    }, 'Add a mantra'),
+    }, 'Begin'),
   ]);
+}
+
+// Enso — a brushed zen circle, drawn with a very intentional gap so it
+// reads as hand-stroked rather than computer-perfect. Used as the logo.
+function ensoSvg() {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'enso');
+  svg.setAttribute('viewBox', '0 0 32 32');
+  const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  c.setAttribute('cx', '16');
+  c.setAttribute('cy', '16');
+  c.setAttribute('r', '12');
+  svg.append(c);
+  return svg;
+}
+
+// Larger, higher-contrast version for the empty state.
+function ensoLargeSvg() {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'empty__glyph');
+  svg.setAttribute('viewBox', '0 0 100 100');
+  const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  c.setAttribute('cx', '50');
+  c.setAttribute('cy', '50');
+  c.setAttribute('r', '38');
+  c.setAttribute('fill', 'none');
+  c.setAttribute('stroke', 'currentColor');
+  c.setAttribute('stroke-width', '4');
+  c.setAttribute('stroke-linecap', 'round');
+  c.setAttribute('stroke-dasharray', '230 28');
+  c.setAttribute('stroke-dashoffset', '-6');
+  c.setAttribute('transform', 'rotate(-22 50 50)');
+  c.setAttribute('opacity', '0.85');
+  svg.append(c);
+  return svg;
 }
 
 function renderMantraCard(mantra, actions) {
@@ -153,9 +188,14 @@ function renderEditor(state, actions, draft) {
     ]),
   );
 
+  const onceADay = draft.frequencyMinutes >= ONCE_A_DAY;
+
   wrap.append(renderField('Mantra', renderTextarea(draft, actions)));
   wrap.append(renderField('Reminder frequency', renderFrequencyControl(draft, actions)));
-  wrap.append(renderField('Active hours', renderHoursControl(draft, actions)));
+  wrap.append(renderField(
+    onceADay ? 'Time of day' : 'Active hours',
+    onceADay ? renderTimeControl(draft, actions) : renderHoursControl(draft, actions),
+  ));
   wrap.append(renderField('Active days', renderDaysControl(draft, actions)));
 
   wrap.append(
@@ -163,7 +203,7 @@ function renderEditor(state, actions, draft) {
       h('button', {
         class: 'btn btn--ghost',
         onclick: () => actions.testNotification(),
-      }, '🔔  Test notification'),
+      }, 'Ring the bell'),
       draft.id
         ? h('button', {
             class: 'btn btn--ghost btn--danger',
@@ -204,17 +244,24 @@ function renderTextarea(draft, actions) {
 }
 
 function renderFrequencyControl(draft, actions) {
-  const presets = [5, 10, 15, 30, 45, 60, 90, 120, 180, 240];
+  const presets = [5, 10, 15, 30, 45, 60, 90, 120, 180, 240, ONCE_A_DAY];
   const select = h('select', {
     class: 'input input--select',
-    onchange: (e) => actions.patchDraft({ frequencyMinutes: Number(e.target.value) }),
+    // Switching to/from once-a-day changes which time control is shown,
+    // so we DO need a re-render here.
+    onchange: (e) => actions.patchDraft(
+      { frequencyMinutes: Number(e.target.value) },
+      { rerender: true },
+    ),
   });
+  const labelFor = (p) => {
+    if (p >= ONCE_A_DAY) return 'Once a day';
+    if (p < 60) return `Every ${p} minutes`;
+    if (p === 60) return 'Every hour';
+    return `Every ${p / 60} hours`;
+  };
   for (const p of presets) {
-    const opt = h(
-      'option',
-      { value: String(p) },
-      p < 60 ? `Every ${p} minutes` : p === 60 ? 'Every hour' : `Every ${p / 60} hours`,
-    );
+    const opt = h('option', { value: String(p) }, labelFor(p));
     if (p === draft.frequencyMinutes) opt.setAttribute('selected', '');
     select.append(opt);
   }
@@ -242,6 +289,19 @@ function renderHoursControl(draft, actions) {
     startSel,
     h('span', { class: 'hours__label' }, 'to'),
     endSel,
+  ]);
+}
+
+function renderTimeControl(draft, actions) {
+  // Once-a-day mode: a single hour picker. We keep activeHours.end in
+  // lockstep so any non-special-cased code reading the model still sees a
+  // valid, non-empty window.
+  const sel = renderHourSelect(draft.activeHours.start, (v) =>
+    actions.patchDraft({ activeHours: { start: v, end: Math.min(24, v + 1) } }),
+  );
+  return h('div', { class: 'hours' }, [
+    h('span', { class: 'hours__label' }, 'At'),
+    sel,
   ]);
 }
 

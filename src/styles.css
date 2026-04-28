@@ -1,19 +1,41 @@
+/* Mantrabe — zen Buddhist styling.
+ *
+ * Palette is anchored to two reference points: washi paper (warm cream) for
+ * light mode, and sumi ink (deep warm black) for dark mode. Accents are
+ * muted gold (matcha-tea ware) and sage green (pine), the colors you'd see
+ * on temple wood and bell drapes. No bright blues or purples — those read
+ * as "tech app" and break the meditative feel we want.
+ */
+
 :root {
-  --bg: #161a26;
-  --bg-elevated: #1f2536;
-  --bg-input: #262d42;
-  --border: #2f3852;
-  --border-strong: #3b466a;
-  --text: #e8ecf5;
-  --text-muted: #98a2bb;
-  --primary: #8b9dff;
-  --primary-press: #7384e6;
-  --accent: #a4c8a4;
-  --danger: #ff8b8b;
-  --warn: #ffd28b;
-  --shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-  --radius: 14px;
-  --radius-sm: 10px;
+  /* parchment / washi */
+  --bg: #f3ecdf;
+  --bg-elevated: #fbf6ec;
+  --bg-input: #ebe2cf;
+  --border: #ddd1b6;
+  --border-strong: #c5b89a;
+
+  /* sumi ink */
+  --text: #2a241c;
+  --text-muted: #7a6f5d;
+
+  /* matcha bowl gold + temple sage */
+  --primary: #b08d57;
+  --primary-press: #936f3d;
+  --primary-on: #1c1610;
+  --accent: #6b8e6f;
+
+  /* clay / terracotta — softer than a hex red */
+  --danger: #a55a44;
+  --warn: #c19135;
+
+  --shadow: 0 6px 20px rgba(60, 40, 12, 0.08);
+  --shadow-soft: 0 2px 6px rgba(60, 40, 12, 0.05);
+
+  --radius: 6px;
+  --radius-sm: 4px;
+  --radius-lg: 10px;
+
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -21,40 +43,71 @@
   --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
-  --max-width: 560px;
+  --space-10: 40px;
+
+  --max-width: 540px;
+
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  --font-serif: 'Iowan Old Style', 'Palatino', 'Palatino Linotype', 'Book Antiqua',
+    Georgia, 'Noto Serif', serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, 'Noto Sans', sans-serif;
 }
 
-@media (prefers-color-scheme: light) {
+@media (prefers-color-scheme: dark) {
   :root {
-    --bg: #f6f7fb;
-    --bg-elevated: #ffffff;
-    --bg-input: #f0f2f8;
-    --border: #e3e7f0;
-    --border-strong: #c8d0e0;
-    --text: #1a1f2e;
-    --text-muted: #5a6478;
-    --shadow: 0 6px 18px rgba(20, 24, 40, 0.08);
+    --bg: #1a1612;
+    --bg-elevated: #221c16;
+    --bg-input: #2a241c;
+    --border: #3a3127;
+    --border-strong: #524634;
+
+    --text: #ebe2cf;
+    --text-muted: #9a8e75;
+
+    --primary: #d4a661;
+    --primary-press: #b88c45;
+    --primary-on: #1c1610;
+    --accent: #95b596;
+
+    --danger: #c87a64;
+    --warn: #d2a456;
+
+    --shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+    --shadow-soft: 0 2px 6px rgba(0, 0, 0, 0.25);
   }
 }
 
-* {
-  box-sizing: border-box;
+/* Subtle washi-paper texture: a faint, repeating SVG noise overlay. Light
+ * enough you don't consciously notice it, but it kills the flat-screen feel.
+ * The encoded SVG below renders ~150 random translucent specks per tile. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.55;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.55  0 0 0 0 0.45  0 0 0 0 0.30  0 0 0 0.06 0'/></filter><rect width='220' height='220' filter='url(%23n)'/></svg>");
+  background-size: 220px 220px;
+  mix-blend-mode: multiply;
 }
 
-html, body {
-  margin: 0;
-  padding: 0;
+@media (prefers-color-scheme: dark) {
+  body::before { mix-blend-mode: screen; opacity: 0.18; }
 }
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
-    Arial, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+  font-family: var(--font-sans);
   background: var(--bg);
   color: var(--text);
   font-size: 16px;
-  line-height: 1.5;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   min-height: 100vh;
@@ -62,6 +115,8 @@ body {
 }
 
 #app {
+  position: relative;
+  z-index: 1;
   max-width: var(--max-width);
   margin: 0 auto;
   padding-top: var(--safe-top);
@@ -70,7 +125,7 @@ body {
 }
 
 .screen {
-  padding: var(--space-4);
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
@@ -82,49 +137,72 @@ body {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-2) 0 var(--space-2);
+  padding: var(--space-3) 0;
 }
 
 .topbar__title {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  font-size: 1.25rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  gap: var(--space-3);
+  font-family: var(--font-serif);
+  font-size: 1.45rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
-.logo-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  box-shadow: 0 0 18px rgba(139, 157, 255, 0.5);
+/* Enso (zen circle) — a single ink stroke, drawn with a slightly broken
+ * arc so it feels brushed by hand rather than computer-perfect. */
+.enso {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+.enso circle {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-dasharray: 75 8;
+  stroke-dashoffset: -2;
+  transform-origin: center;
+  transform: rotate(-22deg);
+  opacity: 0.92;
 }
 
 /* Banner -------------------------------------------------------------------- */
 
 .banner {
-  margin: var(--space-3) var(--space-4) 0;
+  margin: var(--space-3) var(--space-5) 0;
   padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius);
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  font-size: 0.92rem;
+  font-size: 0.95rem;
+  border: 1px solid;
+  background: var(--bg-elevated);
 }
 
 .banner--info {
-  background: rgba(139, 157, 255, 0.12);
-  border: 1px solid rgba(139, 157, 255, 0.35);
+  border-color: var(--border);
   color: var(--text);
 }
-
+.banner--info::before {
+  content: '◯';
+  font-size: 1.1rem;
+  color: var(--accent);
+  margin-right: var(--space-1);
+}
 .banner--warn {
-  background: rgba(255, 210, 139, 0.12);
-  border: 1px solid rgba(255, 210, 139, 0.35);
+  border-color: var(--warn);
   color: var(--text);
+}
+.banner--warn::before {
+  content: '◑';
+  font-size: 1.1rem;
+  color: var(--warn);
+  margin-right: var(--space-1);
 }
 
 /* Buttons ------------------------------------------------------------------- */
@@ -136,15 +214,17 @@ body {
   color: var(--text);
   font: inherit;
   font-weight: 500;
-  padding: 10px 16px;
-  border-radius: var(--radius-sm);
+  padding: 10px 18px;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
+  transition: background 0.18s ease, border-color 0.18s ease,
+    color 0.18s ease, transform 0.06s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   white-space: nowrap;
+  letter-spacing: 0.01em;
 }
 .btn:active { transform: translateY(1px); }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -156,18 +236,23 @@ body {
 
 .btn--icon {
   padding: 0;
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   font-size: 1.4rem;
-  font-weight: 400;
+  font-weight: 300;
+  font-family: var(--font-serif);
+  line-height: 1;
 }
 
 .btn--primary {
   background: var(--primary);
-  color: #0d1020;
+  color: var(--primary-on);
   border-color: var(--primary);
 }
-.btn--primary:hover:not(:disabled) { background: var(--primary-press); border-color: var(--primary-press); }
+.btn--primary:hover:not(:disabled) {
+  background: var(--primary-press);
+  border-color: var(--primary-press);
+}
 
 .btn--ghost {
   background: transparent;
@@ -179,13 +264,16 @@ body {
 .btn--danger {
   color: var(--danger);
 }
-.btn--danger:hover { background: rgba(255, 139, 139, 0.1); border-color: rgba(255, 139, 139, 0.45); }
+.btn--danger:hover {
+  background: rgba(165, 90, 68, 0.08);
+  border-color: var(--danger);
+}
 
 /* Empty state --------------------------------------------------------------- */
 
 .empty {
   text-align: center;
-  padding: var(--space-8) var(--space-4);
+  padding: var(--space-10) var(--space-5);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -193,12 +281,24 @@ body {
   color: var(--text-muted);
 }
 .empty__glyph {
-  font-size: 3rem;
-  filter: drop-shadow(0 6px 16px rgba(139, 157, 255, 0.45));
+  width: 84px;
+  height: 84px;
   margin-bottom: var(--space-2);
+  opacity: 0.7;
 }
-.empty h2 { color: var(--text); font-weight: 600; margin: 0; }
-.empty p { margin: 0; max-width: 28ch; }
+.empty h2 {
+  color: var(--text);
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: 1.4rem;
+  letter-spacing: 0.01em;
+  margin: 0;
+}
+.empty p {
+  margin: 0;
+  max-width: 30ch;
+  font-size: 0.96rem;
+}
 
 /* Mantra list --------------------------------------------------------------- */
 
@@ -214,33 +314,47 @@ body {
 .mantra {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  box-shadow: var(--shadow);
-  transition: opacity 0.15s ease;
+  gap: var(--space-4);
+  box-shadow: var(--shadow-soft);
+  transition: opacity 0.2s ease;
+  position: relative;
 }
-.mantra--off { opacity: 0.55; }
+.mantra::before {
+  /* a small vertical bar on the left, like a temple banner */
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  background: var(--accent);
+  border-radius: 2px;
+  opacity: 0.7;
+}
+.mantra--off { opacity: 0.5; }
+.mantra--off::before { background: var(--border-strong); }
 
-.mantra__main {
-  flex: 1;
-  min-width: 0;
-}
+.mantra__main { flex: 1; min-width: 0; }
 
 .mantra__text {
   margin: 0 0 4px;
+  font-family: var(--font-serif);
   font-weight: 500;
-  font-size: 1.02rem;
+  font-size: 1.1rem;
   line-height: 1.4;
   word-wrap: break-word;
+  letter-spacing: 0.005em;
 }
 
 .mantra__meta {
   margin: 0;
   font-size: 0.85rem;
   color: var(--text-muted);
+  letter-spacing: 0.01em;
 }
 
 .mantra__actions {
@@ -276,7 +390,7 @@ body {
   inset: 0;
   border-radius: 999px;
   background: var(--border-strong);
-  transition: background 0.15s ease;
+  transition: background 0.2s ease;
   cursor: pointer;
 }
 .switch__track::after {
@@ -287,20 +401,17 @@ body {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #fff;
-  transition: transform 0.15s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  background: #fbf6ec;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
 }
-.switch input:checked + .switch__track {
-  background: var(--primary);
-}
-.switch input:checked + .switch__track::after {
-  transform: translateX(20px);
-}
+.switch input:checked + .switch__track { background: var(--primary); }
+.switch input:checked + .switch__track::after { transform: translateX(20px); }
 
 /* Editor -------------------------------------------------------------------- */
 
 .screen--editor .topbar .btn--ghost { padding: 8px 12px; }
+.screen--editor .topbar__title { font-size: 1.25rem; }
 
 .field {
   display: flex;
@@ -308,41 +419,45 @@ body {
   gap: var(--space-2);
 }
 .field__label {
-  font-size: 0.82rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
   color: var(--text-muted);
-  font-weight: 600;
+  font-weight: 500;
+  font-style: italic;
 }
 
 .input {
   width: 100%;
   padding: 12px 14px;
-  background: var(--bg-input);
+  background: var(--bg-elevated);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius);
   color: var(--text);
   font: inherit;
   font-size: 1rem;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: border-color 0.2s ease, background 0.2s ease;
 }
 .input:focus {
   outline: none;
   border-color: var(--primary);
   background: var(--bg-elevated);
+  box-shadow: 0 0 0 3px rgba(176, 141, 87, 0.15);
 }
 
 .input--textarea {
   resize: vertical;
-  min-height: 84px;
-  line-height: 1.5;
-  font-family: inherit;
+  min-height: 92px;
+  line-height: 1.55;
+  font-family: var(--font-serif);
+  font-size: 1.08rem;
 }
 
 .input--select {
   appearance: none;
   -webkit-appearance: none;
-  background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
     linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
   background-position: calc(100% - 18px) 50%, calc(100% - 12px) 50%;
   background-size: 6px 6px, 6px 6px;
@@ -358,9 +473,14 @@ body {
 }
 .hours__label {
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
+  font-style: italic;
+  font-family: var(--font-serif);
 }
-.hours .input--select { flex: 1; min-width: 110px; }
+.hours .input--select {
+  flex: 1;
+  min-width: 110px;
+}
 
 .days {
   display: grid;
@@ -371,19 +491,21 @@ body {
 .day-pill {
   appearance: none;
   border: 1px solid var(--border);
-  background: var(--bg-input);
+  background: var(--bg-elevated);
   color: var(--text-muted);
-  border-radius: var(--radius-sm);
-  padding: 10px 0;
-  font-size: 0.85rem;
+  border-radius: var(--radius);
+  padding: 11px 0;
+  font-family: var(--font-serif);
+  font-size: 0.92rem;
+  letter-spacing: 0.04em;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 .day-pill--on {
-  background: rgba(139, 157, 255, 0.18);
+  background: var(--primary);
   border-color: var(--primary);
-  color: var(--text);
+  color: var(--primary-on);
 }
 
 .editor-actions {
@@ -391,4 +513,13 @@ body {
   flex-wrap: wrap;
   gap: var(--space-3);
   margin-top: var(--space-3);
+}
+
+/* Subtle entrance — a little fade so transitions feel calm, not snappy. */
+@media (prefers-reduced-motion: no-preference) {
+  .screen { animation: fade-in 0.32s ease both; }
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
 }

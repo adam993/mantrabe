@@ -8,9 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "gen-bell": "node scripts/generate-bell.cjs",
-    "postinstall": "node scripts/generate-bell.cjs",
-    "cap:sync": "npm run build && cap sync",
+    "cap:sync": "yarn build && cap sync",
     "cap:add:android": "cap add android",
     "cap:add:ios": "cap add ios",
     "cap:open:android": "cap open android",
@@ -21,8 +19,9 @@
     "build:ios": "bash scripts/build-ios.sh",
     "build:linux": "bash scripts/build-linux.sh",
     "build:all": "bash scripts/build-all.sh",
-    "dist:linux": "npm run build && electron-builder --linux --publish never"
+    "dist:linux": "yarn build && electron-builder --linux --publish never"
   },
+  "packageManager": "yarn@4.5.3",
   "keywords": [
     "mantra",
     "mindfulness",
@@ -34,7 +33,9 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@capacitor/android": "^8.3.1",
     "@capacitor/core": "^8.3.1",
+    "@capacitor/ios": "^8.3.1",
     "@capacitor/local-notifications": "^8.0.2",
     "@capacitor/preferences": "^8.0.1"
   },

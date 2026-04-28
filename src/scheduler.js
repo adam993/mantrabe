@@ -5,8 +5,12 @@
 // start of the active window each day, so a 30-minute frequency starting at
 // 09:00 fires at 09:00, 09:30, 10:00, ... up to (but not including) `end`.
 // `activeDays` is Mon..Sun (index 0 = Monday).
+//
+// Once-a-day mode (frequencyMinutes === 1440): fires exactly once per
+// active day at activeHours.start. The `end` value is ignored — the editor
+// hides it for this case so it doesn't matter what it's set to.
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+export const ONCE_A_DAY = 1440;
 
 function dayIndexFromDate(d) {
   // JS getDay(): 0 = Sunday. We want 0 = Monday.
@@ -19,7 +23,7 @@ export function computeNextOccurrences(mantra, count = 30, fromDate = new Date()
   if (!frequencyMinutes || frequencyMinutes <= 0) return out;
   if (!activeDays || !activeDays.some(Boolean)) return out;
   const startMin = activeHours.start * 60;
-  const endMin = activeHours.end * 60;
+  const endMin = frequencyMinutes >= ONCE_A_DAY ? startMin + 1 : activeHours.end * 60;
   if (endMin <= startMin) return out;
 
   // Walk forward day by day. Each day, generate all freq slots within the
@@ -48,13 +52,17 @@ export function computeNextOccurrences(mantra, count = 30, fromDate = new Date()
 }
 
 export function describeMantra(mantra) {
+  const days = formatDays(mantra.activeDays);
+  if (mantra.frequencyMinutes >= ONCE_A_DAY) {
+    return `once a day at ${pad(mantra.activeHours.start)}:00 · ${days}`;
+  }
   const freq = formatFrequency(mantra.frequencyMinutes);
   const hours = `${pad(mantra.activeHours.start)}:00–${pad(mantra.activeHours.end)}:00`;
-  const days = formatDays(mantra.activeDays);
   return `${freq} · ${hours} · ${days}`;
 }
 
 export function formatFrequency(minutes) {
+  if (minutes >= ONCE_A_DAY) return 'once a day';
   if (minutes < 60) return `every ${minutes} min`;
   if (minutes % 60 === 0) {
     const h = minutes / 60;

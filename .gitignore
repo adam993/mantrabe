@@ -1,6 +1,15 @@
 # Dependencies
 node_modules/
 
+# Yarn 4 caches & runtime — but we DO commit .yarn/releases/ and .yarnrc.yml
+# so the project bootstraps without corepack network access.
+.yarn/*
+!.yarn/releases
+!.yarn/patches
+!.yarn/plugins
+.yarn/install-state.gz
+.pnp.*
+
 # Build output
 dist/
 release/

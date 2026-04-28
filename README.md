@@ -17,12 +17,15 @@ Runs on **iOS**, **Android**, and **Linux desktop** (Windows / macOS too).
   so the app can keep ringing in the background
 - **`localStorage` / Capacitor `Preferences`** for storage — everything stays
   on your device
+- **Yarn 4** as the package manager (with `nodeLinker: node-modules` —
+  Capacitor's native projects expect a real `node_modules` layout, so PnP
+  isn't usable here)
 
 ## Running locally
 
 ```bash
-npm install
-npm run dev          # opens at http://localhost:5173
+yarn install
+yarn dev          # opens at http://localhost:5173
 ```
 
 Click "Enable" on the permission banner so notifications can fire, then add
@@ -34,15 +37,15 @@ Each script is in `scripts/` and is also exposed via npm scripts.
 
 | Target          | Command              | Output                                     |
 | --------------- | -------------------- | ------------------------------------------ |
-| Linux desktop   | `npm run build:linux`| `release/Mantrabe-*.AppImage`, `*.deb`     |
-| Android         | `npm run build:android` | `release/mantrabe-android.apk`           |
-| iOS (macOS)     | `npm run build:ios`  | Opens Xcode for `Product > Archive`        |
-| Everything      | `npm run build:all`  | Tries all of the above on this machine     |
+| Linux desktop   | `yarn build:linux`| `release/Mantrabe-*.AppImage`, `*.deb`     |
+| Android         | `yarn build:android` | `release/mantrabe-android.apk`           |
+| iOS (macOS)     | `yarn build:ios`  | Opens Xcode for `Product > Archive`        |
+| Everything      | `yarn build:all`  | Tries all of the above on this machine     |
 
 ### Linux desktop (Electron)
 
 ```bash
-npm run build:linux
+yarn build:linux
 ```
 
 Builds an AppImage and a `.deb`. Tested on Fedora; needs Node 20+. If you
@@ -55,7 +58,7 @@ Requirements: JDK 17+ on `PATH`, Android SDK with platform-tools, and
 `ANDROID_SDK_ROOT` (or `ANDROID_HOME`) set.
 
 ```bash
-npm run build:android
+yarn build:android
 ```
 
 The first run scaffolds `./android/`. The script also drops `bell.wav` into
@@ -77,8 +80,8 @@ Building an `.ipa` requires **macOS + Xcode + a paid Apple Developer
 certificate**. From a Mac:
 
 ```bash
-npm install
-npm run build:ios
+yarn install
+yarn build:ios
 # then in Xcode: Product > Archive > Distribute App
 ```
 

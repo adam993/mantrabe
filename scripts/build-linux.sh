@@ -17,10 +17,10 @@ if [ ! -f "assets/icon.png" ]; then
 fi
 
 echo "==> Building web assets"
-npm run build
+yarn build
 
 echo "==> Packaging Electron app for Linux"
-npx electron-builder --linux --publish never
+yarn electron-builder --linux --publish never
 
 echo
 echo "==> Done. Look in ./release for the AppImage and .deb."

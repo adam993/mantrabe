@@ -1,8 +1,9 @@
 // In-app bell chime player.
-// We bundle a real audio file (public/bell.wav) for native local notifications,
-// but for in-app preview / web notifications we play it via HTMLAudioElement.
-// As a fallback (e.g. autoplay-restricted contexts) we synthesize a soft bell
-// using the Web Audio API so the user always hears *something* on test.
+// The bundled audio file (public/church_bell.wav) is the same sound the OS
+// uses for native local notifications. For in-app preview and web/Electron
+// notifications we play it via HTMLAudioElement. If that fails (e.g.
+// autoplay-restricted contexts), we synthesize a soft bell with Web Audio
+// so the user always hears *something* on test.
 
 let bellAudio = null;
 let audioCtx = null;
@@ -22,7 +23,7 @@ export async function playBellChime() {
   try {
     if (!bellAudio) {
       const base = (import.meta && import.meta.env && import.meta.env.BASE_URL) || './';
-      bellAudio = new Audio(`${base}bell.wav`);
+      bellAudio = new Audio(`${base}church_bell.wav`);
       bellAudio.preload = 'auto';
     }
     bellAudio.currentTime = 0;

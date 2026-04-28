@@ -6,7 +6,7 @@
 #   - Android SDK with platform-tools and a recent platform (API 34+ recommended)
 #   - ANDROID_SDK_ROOT (or ANDROID_HOME) pointing at the SDK
 #
-# First time only: this script will run `npx cap add android` to scaffold the
+# First time only: this script will run `yarn cap add android` to scaffold the
 # native project under ./android. Subsequent runs sync the web assets.
 
 set -euo pipefail
@@ -14,23 +14,22 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 echo "==> Building web assets"
-npm run build
+yarn build
 
 if [ ! -d "android" ]; then
   echo "==> First-time scaffold of Android project"
-  npx cap add android
-  # Drop the bell into the Android raw resources so LocalNotifications can
-  # reference it as `bell.wav`. (Capacitor's plugin looks here on Android.)
-  mkdir -p android/app/src/main/res/raw
-  cp public/bell.wav android/app/src/main/res/raw/bell.wav
-else
-  # Refresh raw resource each build in case the bell was regenerated.
-  mkdir -p android/app/src/main/res/raw
-  cp public/bell.wav android/app/src/main/res/raw/bell.wav
+  yarn cap add android
 fi
 
+# Drop the bell into the Android raw resources so LocalNotifications can
+# reference it as `church_bell.wav`. (Capacitor's plugin looks in res/raw on
+# Android. The filename must use only lowercase / digits / underscores —
+# that's why the WAV is named with an underscore, not a dash.)
+mkdir -p android/app/src/main/res/raw
+cp public/church_bell.wav android/app/src/main/res/raw/church_bell.wav
+
 echo "==> Syncing Capacitor with Android"
-npx cap sync android
+yarn cap sync android
 
 echo "==> Building APK (debug)"
 ( cd android && ./gradlew assembleDebug )
