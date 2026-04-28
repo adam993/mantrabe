@@ -36,3 +36,9 @@ assets/icon.png
 # Local environment
 .env
 .env.local
+
+# Swift toolchain artifacts left behind by iOS-on-Linux attempts (swiftly).
+# iOS builds happen on macOS via Xcode; we don't need a local Swift toolchain.
+.swift-version
+swiftly*.tar.gz
+LICENSE.txt
