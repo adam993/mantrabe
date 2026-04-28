@@ -1,44 +1,56 @@
 // Local persistence for mantras.
-// Uses Capacitor Preferences on native platforms (survives app reinstall data
-// purges better than localStorage in some edge cases) and localStorage on web/Electron.
-// Both are local-only — no cloud sync, no auth.
+// Uses Capacitor Preferences on native platforms, localStorage everywhere
+// else. Both are local-only — no cloud sync, no auth.
+//
+// We import @capacitor/* statically: Vite resolves them at build time, so
+// they're bundled into the main chunk. Dynamic imports caused a blank
+// screen on Android when the WebView failed to fetch a sub-chunk before
+// the app's first render.
+
+import { Capacitor } from '@capacitor/core';
+import { Preferences } from '@capacitor/preferences';
 
 const KEY = 'mantrabe.mantras.v1';
 const PERMISSION_KEY = 'mantrabe.notifPermissionAsked.v1';
 
-let cachedNative = null;
-async function getNative() {
-  if (cachedNative !== null) return cachedNative;
+function useNative() {
   try {
-    const { Capacitor } = await import('@capacitor/core');
-    if (Capacitor.isNativePlatform()) {
-      const { Preferences } = await import('@capacitor/preferences');
-      cachedNative = Preferences;
-      return Preferences;
-    }
+    return Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform();
   } catch {
-    // Capacitor not available — running in plain web/Electron.
+    return false;
   }
-  cachedNative = false;
-  return false;
 }
 
 async function readRaw(key) {
-  const native = await getNative();
-  if (native) {
-    const { value } = await native.get({ key });
-    return value;
+  if (useNative()) {
+    try {
+      const { value } = await Preferences.get({ key });
+      return value;
+    } catch (err) {
+      console.warn('Preferences.get failed, falling back to localStorage:', err);
+    }
   }
-  return localStorage.getItem(key);
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
 }
 
 async function writeRaw(key, value) {
-  const native = await getNative();
-  if (native) {
-    await native.set({ key, value });
-    return;
+  if (useNative()) {
+    try {
+      await Preferences.set({ key, value });
+      return;
+    } catch (err) {
+      console.warn('Preferences.set failed, falling back to localStorage:', err);
+    }
   }
-  localStorage.setItem(key, value);
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Storage may be unavailable in private mode etc. — silently drop.
+  }
 }
 
 export async function loadMantras() {
@@ -57,7 +69,6 @@ export async function saveMantras(mantras) {
 }
 
 function newId() {
-  // crypto.randomUUID is available in modern browsers and Node.
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
   return 'm_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
@@ -68,7 +79,6 @@ export function makeMantra(input = {}) {
     text: input.text || '',
     frequencyMinutes: input.frequencyMinutes ?? 60,
     activeHours: input.activeHours || { start: 9, end: 21 },
-    // Mon..Sun. Default: weekdays only.
     activeDays: input.activeDays || [true, true, true, true, true, false, false],
     enabled: input.enabled ?? true,
     createdAt: input.createdAt ?? Date.now(),

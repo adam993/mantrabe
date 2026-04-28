@@ -112,17 +112,40 @@ function render() {
 }
 
 async function init() {
-  state.mantras = await loadMantras();
-  state.permission = await getPermissionState();
+  // Render the empty UI first so a slow / failing async call below can
+  // never produce a blank screen. We re-render once data is loaded.
   render();
+
+  try {
+    state.mantras = await loadMantras();
+  } catch (err) {
+    console.error('loadMantras failed:', err);
+  }
+
+  try {
+    state.permission = await getPermissionState();
+  } catch (err) {
+    console.error('getPermissionState failed:', err);
+  }
+
+  render();
+
   // Reschedule on load so reminders survive app restarts. (On native, the OS
   // already remembers scheduled notifications, but rescheduling extends the
   // lookahead window past anything that has fired since.)
   if (state.permission === 'granted' && state.mantras.length > 0) {
-    await rescheduleAll(state.mantras);
+    try {
+      await rescheduleAll(state.mantras);
+    } catch (err) {
+      console.error('rescheduleAll failed:', err);
+    }
   }
 }
 
 init().catch((err) => {
   console.error('Mantrabe init failed:', err);
+  // Last-resort visible signal so a failure never silently blanks the UI.
+  try {
+    root.textContent = 'Mantrabe could not start: ' + (err && err.message || err);
+  } catch {}
 });
