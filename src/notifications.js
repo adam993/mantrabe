@@ -105,7 +105,6 @@ async function rescheduleNative(mantras) {
     body: e.mantra.text,
     schedule: { at: e.at, allowWhileIdle: true },
     sound: 'church_bell.wav',
-    smallIcon: 'ic_stat_icon_config_sample',
     extra: { mantraId: e.mantra.id },
   }));
 
@@ -176,6 +175,12 @@ function fireWebNotification(mantra) {
 
 export async function fireTestNotification(mantra) {
   if (isNative()) {
+    // Play the chime in-app right away so the user gets immediate feedback
+    // regardless of whether the OS notification surfaces. (On Android, a
+    // mis-configured notification — e.g. invalid smallIcon — can be silently
+    // dropped, so without this the button felt broken.) The fireWebNotification
+    // path already plays the chime itself.
+    playBellChime().catch(() => {});
     try {
       await LocalNotifications.schedule({
         notifications: [
@@ -185,7 +190,6 @@ export async function fireTestNotification(mantra) {
             body: (mantra && mantra.text) || 'This is how a reminder will look.',
             schedule: { at: new Date(Date.now() + 1500) },
             sound: 'church_bell.wav',
-            smallIcon: 'ic_stat_icon_config_sample',
           },
         ],
       });

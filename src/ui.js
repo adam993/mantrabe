@@ -230,7 +230,7 @@ function renderTextarea(draft, actions) {
     class: 'input input--textarea',
     rows: '3',
     placeholder: 'e.g. I am calm and present.',
-    maxlength: '240',
+    maxlength: '270',
     oninput: (e) => {
       actions.patchDraft({ text: e.target.value });
       // Sync the Save button's disabled state without a full re-render
