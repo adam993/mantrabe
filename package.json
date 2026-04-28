@@ -1,0 +1,67 @@
+{
+  "name": "mantrabe",
+  "version": "0.1.0",
+  "description": "Mantrabe — a serene cross-platform mantra reminder. Local-first, no cloud, no auth.",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "gen-bell": "node scripts/generate-bell.cjs",
+    "postinstall": "node scripts/generate-bell.cjs",
+    "cap:sync": "npm run build && cap sync",
+    "cap:add:android": "cap add android",
+    "cap:add:ios": "cap add ios",
+    "cap:open:android": "cap open android",
+    "cap:open:ios": "cap open ios",
+    "electron": "electron .",
+    "electron:dev": "ELECTRON_DEV=1 electron .",
+    "build:android": "bash scripts/build-android.sh",
+    "build:ios": "bash scripts/build-ios.sh",
+    "build:linux": "bash scripts/build-linux.sh",
+    "build:all": "bash scripts/build-all.sh",
+    "dist:linux": "npm run build && electron-builder --linux --publish never"
+  },
+  "keywords": [
+    "mantra",
+    "mindfulness",
+    "reminder",
+    "meditation",
+    "capacitor",
+    "electron"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@capacitor/core": "^8.3.1",
+    "@capacitor/local-notifications": "^8.0.2",
+    "@capacitor/preferences": "^8.0.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.3.1",
+    "electron": "^41.3.0",
+    "electron-builder": "^26.8.1",
+    "vite": "^8.0.10"
+  },
+  "build": {
+    "appId": "com.mantrabe.app",
+    "productName": "Mantrabe",
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility",
+      "icon": "assets/icon.png"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8b9dff"/>
+      <stop offset="100%" stop-color="#a4c8a4"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#1a1f2e"/>
+  <!-- stylized bell -->
+  <path d="M32 14
+           C 22 14, 18 22, 18 32
+           L 18 40
+           C 18 42, 16 44, 14 46
+           L 50 46
+           C 48 44, 46 42, 46 40
+           L 46 32
+           C 46 22, 42 14, 32 14 Z"
+        fill="url(#g)" opacity="0.95"/>
+  <circle cx="32" cy="51" r="3" fill="url(#g)"/>
+  <!-- subtle resonance rings -->
+  <path d="M10 30 Q 32 22, 54 30" stroke="#8b9dff" stroke-width="1" fill="none" opacity="0.35"/>
+  <path d="M6 36 Q 32 26, 58 36" stroke="#8b9dff" stroke-width="1" fill="none" opacity="0.2"/>
+</svg>
