@@ -13,10 +13,26 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-echo "==> Bumping build number"
-node scripts/version.cjs bump build
-# Read the post-bump version so the APK gets a unique, versioned filename.
+# Optional version bump.
+#   bash scripts/build-android.sh            -> no bump (uses current version)
+#   bash scripts/build-android.sh build      -> bump build  (0.0.X)
+#   bash scripts/build-android.sh minor      -> bump minor  (0.X.0) — `yarn build:android-bump`
+#   bash scripts/build-android.sh major      -> bump major  (X.0.0)
+BUMP="${1:-}"
+case "$BUMP" in
+  build|minor|major)
+    echo "==> Bumping version: $BUMP"
+    node scripts/version.cjs bump "$BUMP"
+    ;;
+  "")
+    ;;
+  *)
+    echo "Unknown bump argument: $BUMP (expected build|minor|major)"
+    exit 1
+    ;;
+esac
 VERSION="$(node scripts/version.cjs show | awk '{print $1}')"
+echo "==> Building Mantrabe $VERSION for Android"
 
 echo "==> Building web assets"
 yarn build
