@@ -122,6 +122,12 @@ body {
   padding-top: var(--safe-top);
   padding-bottom: var(--safe-bottom);
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#app > main {
+  flex: 1;
 }
 
 .screen {
@@ -532,6 +538,36 @@ body {
   flex-wrap: wrap;
   gap: var(--space-3);
   margin-top: var(--space-3);
+}
+
+/* Footer ------------------------------------------------------------------- */
+
+.footer {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-5) var(--space-5) calc(var(--space-5) + var(--safe-bottom));
+  margin-top: var(--space-3);
+}
+
+.footer__download {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 22px;
+  text-decoration: none;
+  font-family: var(--font-serif);
+  letter-spacing: 0.02em;
+}
+.footer__download-label {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+.footer__download-meta {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
 }
 
 /* Subtle entrance — a little fade so transitions feel calm, not snappy. */

@@ -6,7 +6,7 @@
   "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/version.cjs sync && vite build",
+    "build": "node scripts/version.cjs sync && node scripts/prepare-public-apk.cjs && vite build",
     "preview": "vite preview",
     "version:show": "node scripts/version.cjs show",
     "version:bump": "node scripts/version.cjs bump build",
@@ -57,6 +57,7 @@
     "productName": "Mantrabe",
     "files": [
       "dist/**/*",
+      "!dist/mantrabe-android.apk",
       "electron/**/*",
       "package.json"
     ],

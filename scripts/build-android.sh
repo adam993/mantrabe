@@ -52,6 +52,12 @@ cp public/*.wav android/app/src/main/res/raw/
 echo "==> Syncing Capacitor with Android"
 yarn cap sync android
 
+# yarn build copies the previous APK into public/ so the web bundle can
+# offer it as a download. After cap sync, that APK is sitting inside the
+# Android assets folder too — which would make every new APK contain the
+# previous one, doubling its size. Drop it before gradle packages.
+rm -f android/app/src/main/assets/public/mantrabe-android.apk
+
 echo "==> Building APK (debug)"
 ( cd android && ./gradlew assembleDebug )
 

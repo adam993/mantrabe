@@ -5,6 +5,8 @@ import { describeMantra, ONCE_A_DAY } from './scheduler.js';
 import { VERSION } from './version.js';
 import { SOUNDS, DEFAULT_SOUND_ID } from './sounds.js';
 import { playBellChime } from './bell-chime.js';
+import { HAS_ANDROID_APK, ANDROID_APK_BYTES } from './build-info.js';
+import { Capacitor } from '@capacitor/core';
 
 // --- DOM helpers -------------------------------------------------------------
 
@@ -48,6 +50,37 @@ export function renderApp(root, state, actions) {
   } else if (screen.name === 'edit') {
     root.append(renderEditor(state, actions, screen.draft));
   }
+
+  const footer = renderFooter(state);
+  if (footer) root.append(footer);
+}
+
+function renderFooter(state) {
+  // Only show the Android download offer in the actual web build —
+  // hide on the native Capacitor app and on Electron, where downloading
+  // an APK makes no sense.
+  if (!HAS_ANDROID_APK) return null;
+  let isNative = false;
+  try { isNative = !!(Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()); } catch {}
+  const isElectron = !!(typeof window !== 'undefined' && window.mantrabe && window.mantrabe.isElectron);
+  if (isNative || isElectron) return null;
+
+  const sizeMb = (ANDROID_APK_BYTES / 1024 / 1024).toFixed(1);
+  return h('footer', { class: 'footer' }, [
+    h(
+      'a',
+      {
+        class: 'btn btn--ghost footer__download',
+        href: `./mantrabe-android.apk?v=${encodeURIComponent(VERSION)}`,
+        download: `mantrabe-${VERSION}.apk`,
+        rel: 'noopener',
+      },
+      [
+        h('span', { class: 'footer__download-label' }, 'Download Android app'),
+        h('span', { class: 'footer__download-meta' }, `v${VERSION} · ${sizeMb} MB`),
+      ],
+    ),
+  ]);
 }
 
 function renderPermissionBanner(state, actions) {
