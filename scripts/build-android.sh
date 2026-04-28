@@ -13,6 +13,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+echo "==> Bumping build number"
+node scripts/version.cjs bump build
+
 echo "==> Building web assets"
 yarn build
 

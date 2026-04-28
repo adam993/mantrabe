@@ -151,6 +151,18 @@ body {
   letter-spacing: 0.02em;
 }
 
+.topbar__version {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  opacity: 0.65;
+  align-self: flex-end;
+  padding-bottom: 4px;
+  user-select: text;
+}
+
 /* Enso (zen circle) — a single ink stroke, drawn with a slightly broken
  * arc so it feels brushed by hand rather than computer-perfect. */
 .enso {

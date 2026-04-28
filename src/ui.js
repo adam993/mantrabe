@@ -2,6 +2,7 @@
 // State is owned by main.js; this module renders + emits intents via callbacks.
 
 import { describeMantra, ONCE_A_DAY } from './scheduler.js';
+import { VERSION } from './version.js';
 
 // --- DOM helpers -------------------------------------------------------------
 
@@ -70,6 +71,7 @@ function renderList(state, actions) {
       h('div', { class: 'topbar__title' }, [
         ensoSvg(),
         h('span', {}, 'Mantrabe'),
+        h('span', { class: 'topbar__version', title: `Mantrabe v${VERSION}` }, `v${VERSION}`),
       ]),
       h('button', {
         class: 'btn btn--primary btn--icon',

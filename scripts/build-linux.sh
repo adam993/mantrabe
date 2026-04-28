@@ -8,6 +8,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+echo "==> Bumping build number"
+node scripts/version.cjs bump build
+
 # Make sure a PNG icon exists for Electron Builder. We render the SVG into
 # a 512x512 PNG using the bundled Electron / sharp if available; otherwise
 # we fall back to a tiny fallback PNG.
