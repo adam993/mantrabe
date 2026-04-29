@@ -73,8 +73,7 @@ export function useMantras(): UseMantras {
 
   const saveMantra = React.useCallback(
     async (mantra: Mantra) => {
-      const saved = await upsertLocal(mantra);
-      const list = await loadLocalMantras();
+      const { saved, list } = await upsertLocal(mantra);
       setMantras(list);
       await rescheduleAll(list);
       if (userId) {
@@ -91,8 +90,7 @@ export function useMantras(): UseMantras {
 
   const removeMantra = React.useCallback(
     async (id: string) => {
-      await deleteLocal(id);
-      const list = await loadLocalMantras();
+      const list = await deleteLocal(id);
       setMantras(list);
       await rescheduleAll(list);
       if (userId) {

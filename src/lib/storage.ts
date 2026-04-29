@@ -74,19 +74,26 @@ export async function saveLocalMantras(mantras: Mantra[]): Promise<void> {
   await writeRaw(KEY, JSON.stringify(mantras));
 }
 
-export async function upsertLocal(mantra: Mantra): Promise<Mantra> {
+/** Returns both the saved mantra (with refreshed updatedAt) and the
+ *  new list, so callers don't have to re-read storage to refresh state. */
+export async function upsertLocal(
+  mantra: Mantra,
+): Promise<{ saved: Mantra; list: Mantra[] }> {
   const list = await loadLocalMantras();
   const idx = list.findIndex((m) => m.id === mantra.id);
-  const next = { ...mantra, updatedAt: Date.now() };
-  if (idx >= 0) list[idx] = { ...list[idx], ...next };
-  else list.push(next);
+  const saved = { ...mantra, updatedAt: Date.now() };
+  if (idx >= 0) list[idx] = { ...list[idx], ...saved };
+  else list.push(saved);
   await saveLocalMantras(list);
-  return next;
+  return { saved, list };
 }
 
-export async function deleteLocal(id: string): Promise<void> {
+/** Returns the new list so callers don't have to re-read storage. */
+export async function deleteLocal(id: string): Promise<Mantra[]> {
   const list = await loadLocalMantras();
-  await saveLocalMantras(list.filter((m) => m.id !== id));
+  const next = list.filter((m) => m.id !== id);
+  await saveLocalMantras(next);
+  return next;
 }
 
 export async function getPermissionAsked(): Promise<boolean> {
@@ -102,6 +109,7 @@ export async function setPermissionAsked(): Promise<void> {
 //   create table mantras (
 //     id uuid primary key,
 //     user_id uuid not null references auth.users(id) on delete cascade,
+//     kind text not null check (kind in ('mantra', 'reminder')),
 //     text text not null,
 //     frequency_minutes int not null,
 //     active_hours_start int not null,
