@@ -1,0 +1,11 @@
+# Netlify config. The prebuild step pulls the freshest Android APK from
+# the `android-latest` GitHub Release (published by .github/workflows/
+# android-release.yml) so the web bundle's Download button serves it.
+# If the fetch fails the build still succeeds; the button just hides.
+
+[build]
+  command = "node scripts/fetch-public-apk.cjs && yarn build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
