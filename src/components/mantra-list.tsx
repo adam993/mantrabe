@@ -48,13 +48,13 @@ export function MantraList({
     >
       <header
         data-id="list-topbar"
-        className="mx-auto flex w-full max-w-[var(--topbar-width)] items-center gap-3 py-3"
+        className="mx-auto flex w-full max-w-[var(--content-width)] items-center gap-3 py-3"
       >
         <div
           data-id="list-topbar-title"
           className="flex flex-1 items-center gap-3 font-serif-zen text-[1.45rem] font-medium tracking-wide"
         >
-          <Enso />
+          <Enso strokeWidth={4.7} />
           <span>Mantrabe</span>
           <span
             data-id="list-topbar-version"

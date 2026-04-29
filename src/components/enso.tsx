@@ -3,11 +3,20 @@
 
 interface EnsoProps {
   size?: number;
+  strokeWidth?: number;
   className?: string;
   strong?: boolean;
 }
 
-export function Enso({ size = 28, className, strong = false }: EnsoProps) {
+export function Enso({
+  strokeWidth,
+  size = 28,
+  className,
+  strong = false,
+}: EnsoProps) {
+  // Each variant has its own visual default; if the caller supplies a
+  // strokeWidth we use it as-is.
+  const sw = strokeWidth ?? (strong ? 4 : 2.4);
   if (strong) {
     return (
       <svg
@@ -22,7 +31,7 @@ export function Enso({ size = 28, className, strong = false }: EnsoProps) {
           r="38"
           fill="none"
           stroke="currentColor"
-          strokeWidth="4"
+          strokeWidth={sw}
           strokeLinecap="round"
           strokeDasharray="230 28"
           strokeDashoffset="-6"
@@ -45,10 +54,10 @@ export function Enso({ size = 28, className, strong = false }: EnsoProps) {
         r="12"
         fill="none"
         stroke="currentColor"
-        strokeWidth="2.4"
+        strokeWidth={sw}
         strokeLinecap="round"
-        strokeDasharray="75 8"
-        strokeDashoffset="-2"
+        strokeDasharray="59 16"
+        strokeDashoffset="-3"
         transform="rotate(-22 16 16)"
         opacity="0.92"
       />
