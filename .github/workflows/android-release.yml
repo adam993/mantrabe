@@ -53,6 +53,12 @@ jobs:
         run: yarn install --immutable
 
       - name: Build Android APK
+        # Vite inlines VITE_* env at bundle time — without these the
+        # Supabase client initializes as disabled and the sign-in UI
+        # hides itself in the APK.
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: yarn build:android
 
       - name: Read version
