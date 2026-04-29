@@ -1,11 +1,22 @@
-# Netlify config. The prebuild step pulls the freshest Android APK from
-# the `android-latest` GitHub Release (published by .github/workflows/
-# android-release.yml) so the web bundle's Download button serves it.
-# If the fetch fails the build still succeeds; the button just hides.
+# Netlify config.
+#
+# We don't bundle the Android APK into dist/ — it's far too big and the
+# GitHub Actions workflow that builds it (.github/workflows/android-
+# release.yml) often hasn't finished by the time Netlify deploys. Instead
+# we expose a stable in-domain URL (/mantrabe-android.apk) that 302s to
+# the rolling `android-latest` GitHub Release asset. That URL is what
+# the Download button links to, and the redirect target is whatever the
+# latest workflow run produced.
 
 [build]
-  command = "node scripts/fetch-public-apk.cjs && yarn build"
+  command = "yarn build"
   publish = "dist"
 
 [build.environment]
   NODE_VERSION = "22"
+
+[[redirects]]
+  from = "/mantrabe-android.apk"
+  to = "https://github.com/adam993/mantrabe/releases/download/android-latest/mantrabe-android-latest.apk"
+  status = 302
+  force = true

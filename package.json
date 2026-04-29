@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "typecheck": "tsc --noEmit",
-    "build": "node scripts/version.cjs sync && node scripts/prepare-public-apk.cjs && tsc --noEmit && vite build",
+    "build": "node scripts/version.cjs sync && tsc --noEmit && vite build",
     "preview": "vite preview",
     "version:show": "node scripts/version.cjs show",
     "version:bump": "node scripts/version.cjs bump build",

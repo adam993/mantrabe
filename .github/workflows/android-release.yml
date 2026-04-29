@@ -2,9 +2,9 @@ name: Build Android APK
 
 # Builds the Android APK on every push to master and publishes it to a
 # rolling GitHub Release tagged `android-latest`. The Netlify deploy
-# (see netlify.toml + scripts/fetch-public-apk.cjs) downloads that asset
-# at build time so the web build's "Download Android app" button always
-# serves the freshest APK without needing the Android toolchain on Netlify.
+# (see netlify.toml) 302-redirects /mantrabe-android.apk to that release
+# asset, so the "Download Android app" button always serves the freshest
+# APK without bundling it into the web deploy.
 
 on:
   push:
@@ -31,7 +31,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
 
       - uses: android-actions/setup-android@v3
 
