@@ -1,17 +1,8 @@
-import { Capacitor } from '@capacitor/core';
 import { VERSION } from '@/version';
 import { Grass } from '@/components/grass';
+import { isElectron, isNative } from '@/lib/platform';
 
 export function Footer() {
-  let isNative = false;
-  try {
-    isNative = Capacitor.isNativePlatform();
-  } catch {
-    /* noop */
-  }
-  const isElectron =
-    typeof window !== 'undefined' &&
-    !!(window as unknown as { mantrabe?: { isElectron?: boolean } }).mantrabe?.isElectron;
   // Download button is web-only. The footer itself still renders on every
   // platform so the grass strip has a host element with bottom breathing
   // room above the safe-area inset.
@@ -19,7 +10,7 @@ export function Footer() {
   // The href is a stable in-domain URL handled by netlify.toml — it 302s
   // to the rolling `android-latest` GitHub Release asset. That decouples
   // the web deploy from the Android workflow finishing first.
-  const showDownload = !isNative && !isElectron;
+  const showDownload = !isNative() && !isElectron();
 
   return (
     <footer

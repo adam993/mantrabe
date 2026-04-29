@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { Capacitor } from '@capacitor/core';
 import { AuthProvider } from '@/lib/auth';
 import { useMantras } from '@/hooks/use-mantras';
 import { usePermission } from '@/hooks/use-permission';
@@ -9,18 +8,11 @@ import { MantraEditor } from '@/components/mantra-editor';
 import { NotificationsIntro } from '@/components/notifications-intro';
 import { Footer } from '@/components/footer';
 import { SyncErrorToast } from '@/components/sync-error-toast';
+import { isAndroid as detectAndroid } from '@/lib/platform';
 import { getPermissionAsked, setPermissionAsked } from '@/lib/storage';
 import type { Mantra } from '@/types/mantra';
 
 type Screen = { name: 'intro' } | { name: 'list' } | { name: 'edit'; id: string | null };
-
-function getPlatform(): string {
-  try {
-    return Capacitor.getPlatform();
-  } catch {
-    return 'web';
-  }
-}
 
 function Shell() {
   const {
@@ -34,7 +26,7 @@ function Shell() {
     syncError,
   } = useMantras();
   const { permission, request, ensure } = usePermission();
-  const isAndroid = getPlatform() === 'android';
+  const isAndroid = detectAndroid();
 
   // On Android first-run we gate everything behind the notifications intro.
   // We can't decide which screen to show until we've checked Preferences for

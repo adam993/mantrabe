@@ -9,25 +9,12 @@
 // then recompute. The Electron preload bridges system Notification API
 // into the renderer.
 
-import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { computeNextOccurrences } from '@/lib/scheduler';
 import { playBellChime } from '@/lib/bell-chime';
 import { soundFile, DEFAULT_SOUND_ID } from '@/lib/sounds';
+import { getElectronBridge, isNative } from '@/lib/platform';
 import type { Mantra } from '@/types/mantra';
-
-interface ElectronBridge {
-  isElectron?: boolean;
-  notify?: (payload: { title: string; body: string }) => Promise<boolean> | boolean;
-}
-
-function isNative(): boolean {
-  try {
-    return Capacitor.isNativePlatform();
-  } catch {
-    return false;
-  }
-}
 
 export async function requestPermission(): Promise<boolean> {
   if (isNative()) {
@@ -43,10 +30,15 @@ export async function requestPermission(): Promise<boolean> {
   return false;
 }
 
-export async function getPermissionState(): Promise<NotificationPermission | 'prompt'> {
+// Normalized to the three web NotificationPermission states. Capacitor
+// can return 'prompt' / 'prompt-with-rationale' on Android; both fold
+// into 'default' so banner/intro consumers don't have to care.
+export async function getPermissionState(): Promise<NotificationPermission> {
   if (isNative()) {
     const res = await LocalNotifications.checkPermissions();
-    return res.display as NotificationPermission | 'prompt';
+    if (res.display === 'granted') return 'granted';
+    if (res.display === 'denied') return 'denied';
+    return 'default';
   }
   if ('Notification' in globalThis) return Notification.permission;
   return 'denied';
@@ -97,15 +89,6 @@ async function rescheduleNative(mantras: Mantra[]): Promise<void> {
 
 let webTimerId: ReturnType<typeof setTimeout> | null = null;
 let webMantrasCache: Mantra[] = [];
-let webElectronBridge: ElectronBridge | false | null = null;
-
-function getElectronBridge(): ElectronBridge | false {
-  if (webElectronBridge !== null) return webElectronBridge;
-  webElectronBridge =
-    (typeof window !== 'undefined' &&
-      (window as unknown as { mantrabe?: ElectronBridge }).mantrabe) || false;
-  return webElectronBridge;
-}
 
 function rescheduleWeb(mantras: Mantra[]): void {
   webMantrasCache = mantras.filter((m) => m.enabled && m.text.trim());
@@ -142,7 +125,7 @@ function rescheduleWeb(mantras: Mantra[]): void {
 
 function fireWebNotification(mantra: Mantra): void {
   const bridge = getElectronBridge();
-  if (bridge && bridge.notify) {
+  if (bridge?.notify) {
     bridge.notify({ title: 'Mantrabe', body: mantra.text });
   } else if ('Notification' in globalThis && Notification.permission === 'granted') {
     try {

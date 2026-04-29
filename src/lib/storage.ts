@@ -10,25 +10,17 @@
 // screen on Android when the WebView failed to fetch a sub-chunk before
 // the app's first render.
 
-import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 import { DEFAULT_SOUND_ID } from '@/lib/sounds';
+import { isNative } from '@/lib/platform';
 import { supabase } from '@/lib/supabase';
 import type { EntryKind, Mantra } from '@/types/mantra';
 
 const KEY = 'mantrabe.mantras.v1';
 const PERMISSION_KEY = 'mantrabe.notifPermissionAsked.v1';
 
-function useNative(): boolean {
-  try {
-    return Capacitor.isNativePlatform();
-  } catch {
-    return false;
-  }
-}
-
 async function readRaw(key: string): Promise<string | null> {
-  if (useNative()) {
+  if (isNative()) {
     const { value } = await Preferences.get({ key });
     return value;
   }
@@ -36,7 +28,7 @@ async function readRaw(key: string): Promise<string | null> {
 }
 
 async function writeRaw(key: string, value: string): Promise<void> {
-  if (useNative()) {
+  if (isNative()) {
     await Preferences.set({ key, value });
     return;
   }

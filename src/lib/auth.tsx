@@ -1,7 +1,7 @@
 import * as React from 'react';
 import type { Session, User } from '@supabase/supabase-js';
-import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
+import { isNative } from '@/lib/platform';
 import { supabase, SUPABASE_ENABLED } from '@/lib/supabase';
 
 interface AuthContextValue {
@@ -20,14 +20,6 @@ const AuthContext = React.createContext<AuthContextValue | null>(null);
 // the intent filter in scripts/apply-android-customizations.cjs and the
 // scheme entry in Supabase Auth → URL Configuration → Redirect URLs.
 const NATIVE_REDIRECT = 'com.mantrabe.app://auth-callback';
-
-function isNative(): boolean {
-  try {
-    return Capacitor.isNativePlatform();
-  } catch {
-    return false;
-  }
-}
 
 function authRedirectUrl(): string {
   if (isNative()) return NATIVE_REDIRECT;
