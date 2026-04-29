@@ -9,7 +9,6 @@ interface AuthContextValue {
   loading: boolean;
   user: User | null;
   session: Session | null;
-  signInWithOAuth: (provider: 'google' | 'github') => Promise<void>;
   signInWithEmail: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -82,15 +81,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const signInWithOAuth = React.useCallback(async (provider: 'google' | 'github') => {
-    if (!supabase) throw new Error('Supabase not configured.');
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: authRedirectUrl() },
-    });
-    if (error) throw error;
-  }, []);
-
   const signInWithEmail = React.useCallback(async (email: string) => {
     if (!supabase) throw new Error('Supabase not configured.');
     const { error } = await supabase.auth.signInWithOtp({
@@ -112,11 +102,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       user: session?.user ?? null,
       session,
-      signInWithOAuth,
       signInWithEmail,
       signOut,
     }),
-    [loading, session, signInWithOAuth, signInWithEmail, signOut],
+    [loading, session, signInWithEmail, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

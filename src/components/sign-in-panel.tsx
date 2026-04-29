@@ -11,8 +11,7 @@ import { useAuth } from "@/lib/auth";
  * uncluttered for users who don't want sync.
  */
 export function SignInPanel() {
-  const { enabled, user, loading, signInWithOAuth, signInWithEmail } =
-    useAuth();
+  const { enabled, user, loading, signInWithEmail } = useAuth();
   const [open, setOpen] = React.useState(false);
   const [email, setEmail] = React.useState("");
   const [emailSent, setEmailSent] = React.useState(false);
@@ -20,17 +19,6 @@ export function SignInPanel() {
   const [error, setError] = React.useState<string | null>(null);
 
   if (!enabled || loading || user) return null;
-
-  const oauth = async (provider: "google" | "github") => {
-    setError(null);
-    setBusy(true);
-    try {
-      await signInWithOAuth(provider);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err));
-      setBusy(false);
-    }
-  };
 
   const submitEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,25 +73,6 @@ export function SignInPanel() {
           <p className="m-0 text-sm text-muted-foreground">
             Optional. Connect to keep your mantras safe and on every device.
           </p>
-
-          {/* <div data-id="sign-in-panel-buttons" className="flex flex-col gap-2">
-            <Button
-              data-id="sign-in-panel-google"
-              variant="ghost"
-              disabled={busy}
-              onClick={() => oauth('google')}
-            >
-              Connect with Google
-            </Button>
-            <Button
-              data-id="sign-in-panel-github"
-              variant="ghost"
-              disabled={busy}
-              onClick={() => oauth('github')}
-            >
-              Connect with GitHub
-            </Button>
-          </div> */}
 
           {emailSent ? (
             <div

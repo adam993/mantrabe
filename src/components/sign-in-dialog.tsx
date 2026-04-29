@@ -18,7 +18,7 @@ interface Props {
 }
 
 export function SignInDialog({ open, onOpenChange }: Props) {
-  const { signInWithOAuth, signInWithEmail } = useAuth();
+  const { signInWithEmail } = useAuth();
   const [email, setEmail] = React.useState("");
   const [emailSent, setEmailSent] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -32,17 +32,6 @@ export function SignInDialog({ open, onOpenChange }: Props) {
       setBusy(false);
     }
   }, [open]);
-
-  const oauth = async (provider: "google" | "github") => {
-    setError(null);
-    setBusy(true);
-    try {
-      await signInWithOAuth(provider);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err));
-      setBusy(false);
-    }
-  };
 
   const submitEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,34 +70,6 @@ export function SignInDialog({ open, onOpenChange }: Props) {
           </div>
         ) : (
           <>
-            <div data-id="sign-in-dialog-oauth" className="flex flex-col gap-2">
-              {/* <Button
-                data-id="sign-in-dialog-google"
-                variant="ghost"
-                disabled={busy}
-                onClick={() => oauth('google')}
-              >
-                Continue with Google
-              </Button>
-              <Button
-                data-id="sign-in-dialog-github"
-                variant="ghost"
-                disabled={busy}
-                onClick={() => oauth('github')}
-              >
-                Continue with GitHub
-              </Button> */}
-            </div>
-
-            {/* <div
-              data-id="sign-in-dialog-divider"
-              className="flex items-center gap-3 text-xs uppercase tracking-wider text-muted-foreground"
-            >
-              <span className="h-px flex-1 bg-border" />
-              or
-              <span className="h-px flex-1 bg-border" />
-            </div> */}
-
             <form
               data-id="sign-in-dialog-email-form"
               className="flex flex-col gap-3"
