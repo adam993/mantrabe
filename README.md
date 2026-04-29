@@ -1,39 +1,65 @@
 # Mantrabe
 
-A serene cross-platform mantra reminder. Local-first — no auth, no cloud, no
-tracking. Add a phrase, set how often you want to be reminded, pick the hours
-and weekdays that suit you, and the app rings a soft bell chime when the time
-comes.
+A serene cross-platform mantra reminder. Add a phrase, set how often you want
+to be reminded, pick the hours and weekdays that suit you, and the app rings
+a soft bell chime when the time comes.
+
+You can use Mantrabe without an account — your mantras live on your device.
+Sign in (Google, GitHub, or magic-link email) to sync across devices.
 
 Runs on **iOS**, **Android**, and **Linux desktop** (Windows / macOS too).
 
 ## Stack
 
-- **Vite + vanilla JS / CSS / HTML** for the app itself
+- **Vite + React 19 + TypeScript** for the app itself
+- **Tailwind 4 + shadcn/ui** for styling, with a hand-built zen palette
+  (washi paper / sumi ink / matcha gold / temple sage) wired in via Tailwind
+  theme tokens
+- **Supabase** for optional auth + cloud sync (`@supabase/supabase-js`)
 - **[Capacitor](https://capacitorjs.com/)** for iOS + Android (uses
   `@capacitor/local-notifications` for OS-level scheduled reminders, so
   reminders fire even when the app is closed)
 - **[Electron](https://www.electronjs.org/)** for desktop, with a tray icon
   so the app can keep ringing in the background
-- **`localStorage` / Capacitor `Preferences`** for storage — everything stays
-  on your device
-- **Yarn 4** as the package manager (with `nodeLinker: node-modules` —
-  Capacitor's native projects expect a real `node_modules` layout, so PnP
-  isn't usable here)
+- **`localStorage` / Capacitor `Preferences`** as the source of truth.
+  Supabase mirrors signed-in users' mantras for cross-device sync.
+- **Yarn 4** as the package manager (`nodeLinker: node-modules` —
+  Capacitor's native projects expect a real `node_modules` layout)
 
 ## Running locally
 
 ```bash
 yarn install
-yarn dev          # opens at http://localhost:5173
+cp .env.example .env.local   # fill in Supabase URL + anon key (optional)
+yarn dev                     # opens at http://localhost:5173
 ```
 
+If you skip the `.env.local` step the auth UI hides itself and the app runs
+in fully-local mode.
+
 Click "Enable" on the permission banner so notifications can fire, then add
-a mantra and hit "Test notification" to hear the bell.
+a mantra and hit "Ring the bell" to hear the chime.
+
+## Cloud sync (optional)
+
+1. Create a Supabase project and copy the project URL + anon key into
+   `.env.local`.
+2. Run `supabase/schema.sql` in the SQL editor — it creates the `mantras`
+   table and row-level security policies that scope rows to `auth.uid()`.
+3. In **Authentication → Providers**, enable Email + Google + GitHub. Set
+   the OAuth redirect URL to your app origin (e.g. `http://localhost:5173`
+   in dev).
+
+When a user signs in:
+- Mantrabe pulls their remote mantras and merges with whatever is local
+  (last-write-wins on `updated_at`).
+- Subsequent edits write to both local storage and Supabase.
+- Sign-out leaves the local copy untouched.
+
+If `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are missing the sync layer
+is no-op'd — the app reverts to local-only mode.
 
 ## Building installers
-
-Each script is in `scripts/` and is also exposed via npm scripts.
 
 | Target          | Command              | Output                                     |
 | --------------- | -------------------- | ------------------------------------------ |
@@ -71,9 +97,6 @@ To install on a connected device:
 adb install -r release/mantrabe-android.apk
 ```
 
-For a release-signed APK, generate a keystore and use
-`./gradlew assembleRelease` inside `android/`.
-
 ### iOS (Capacitor)
 
 Building an `.ipa` requires **macOS + Xcode + a paid Apple Developer
@@ -86,8 +109,7 @@ yarn build:ios
 ```
 
 On Linux this script just builds the web assets and prints the steps you'll
-need on a Mac. The Capacitor LocalNotifications plugin will pick up
-`bell.wav` from the iOS app's bundle (the script copies it there).
+need on a Mac.
 
 > Note: iOS officially expects `.caf` files for custom notification sounds.
 > Modern iOS handles `.wav` fine in practice, but if the system silently
@@ -101,28 +123,51 @@ need on a Mac. The Capacitor LocalNotifications plugin will pick up
 mantrabe/
 ├── index.html               # Vite entry
 ├── src/
-│   ├── main.js              # bootstrap + state + actions
-│   ├── ui.js                # vanilla render functions
-│   ├── storage.js           # localStorage / Capacitor Preferences
-│   ├── scheduler.js         # pure: next-occurrences math
-│   ├── notifications.js     # Capacitor + web/Electron schedulers
-│   ├── bell-chime.js        # in-app audio playback (+ Web Audio fallback)
-│   └── styles.css
+│   ├── main.tsx             # bootstrap + AuthProvider
+│   ├── App.tsx              # screen state + routing between list/editor
+│   ├── components/
+│   │   ├── ui/              # shadcn primitives (Button, Dialog, Select, ...)
+│   │   ├── mantra-list.tsx
+│   │   ├── mantra-editor.tsx
+│   │   ├── account-menu.tsx
+│   │   ├── sign-in-dialog.tsx
+│   │   ├── permission-banner.tsx
+│   │   ├── footer.tsx
+│   │   └── enso.tsx         # the zen circle SVG
+│   ├── hooks/
+│   │   ├── use-mantras.ts   # local + remote orchestration
+│   │   └── use-permission.ts
+│   ├── lib/
+│   │   ├── auth.tsx         # AuthProvider + useAuth
+│   │   ├── supabase.ts      # client (null when env vars missing)
+│   │   ├── storage.ts       # local + remote read/write/sync
+│   │   ├── scheduler.ts     # pure: next-occurrences math
+│   │   ├── notifications.ts # Capacitor + web/Electron schedulers
+│   │   ├── bell-chime.ts    # in-app audio playback (+ Web Audio fallback)
+│   │   ├── sounds.ts        # bell sound catalog
+│   │   └── utils.ts         # cn() helper
+│   ├── types/mantra.ts
+│   └── styles.css           # Tailwind 4 + theme tokens
+├── supabase/
+│   └── schema.sql           # mantras table + RLS policies
 ├── public/
 │   ├── icon.svg
-│   └── bell.wav             # generated by scripts/generate-bell.cjs
+│   └── *.wav                # bundled bell sounds
 ├── electron/
-│   ├── main.cjs             # main process: window, tray, IPC
-│   └── preload.cjs          # exposes window.mantrabe.notify(...)
+│   ├── main.cjs
+│   └── preload.cjs
 ├── scripts/
-│   ├── generate-bell.cjs    # synthesizes the chime — no external assets
-│   ├── generate-icon.cjs    # rasterizes the SVG to assets/icon.png
+│   ├── version.cjs          # version bump + sync to all platforms
+│   ├── prepare-public-apk.cjs
+│   ├── generate-bell.cjs
+│   ├── generate-icon.cjs
 │   ├── build-android.sh
 │   ├── build-ios.sh
 │   ├── build-linux.sh
 │   └── build-all.sh
 ├── capacitor.config.json
-├── vite.config.js
+├── tsconfig.json
+├── vite.config.ts
 └── package.json
 ```
 
@@ -137,8 +182,3 @@ mantrabe/
   system notification, plays the bell, and re-arms the timer for the next
   one. The Electron build keeps a tray icon so the renderer stays alive
   after you close the window.
-
-## Privacy
-
-Everything is stored locally. No analytics, no telemetry, no server calls.
-The app makes no network requests at runtime.

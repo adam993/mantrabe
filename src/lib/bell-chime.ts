@@ -1,29 +1,30 @@
 // In-app bell chime player.
 //
-// Plays one of the bundled WAVs (catalog in src/sounds.js). On native
-// platforms the OS notification uses the same file via
-// LocalNotifications, so what you hear here in-app matches what fires
-// at reminder time. The Web Audio fallback only kicks in if HTMLAudio
-// playback is blocked (autoplay-restricted contexts).
+// Plays one of the bundled WAVs (catalog in @/lib/sounds). On native
+// platforms the OS notification uses the same file via LocalNotifications,
+// so what you hear here in-app matches what fires at reminder time. The
+// Web Audio fallback only kicks in if HTMLAudio playback is blocked.
 
-import { soundById, DEFAULT_SOUND_ID } from './sounds.js';
+import { soundById, DEFAULT_SOUND_ID } from '@/lib/sounds';
 
-const audioCache = new Map(); // soundId -> HTMLAudioElement
-let audioCtx = null;
+const audioCache = new Map<string, HTMLAudioElement>();
+let audioCtx: AudioContext | null = null;
 
-function getAudioCtx() {
+function getAudioCtx(): AudioContext | null {
   if (audioCtx) return audioCtx;
-  const Ctx = window.AudioContext || window.webkitAudioContext;
+  const Ctx =
+    (window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext }).AudioContext ??
+    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!Ctx) return null;
   audioCtx = new Ctx();
   return audioCtx;
 }
 
-function audioFor(soundId) {
+function audioFor(soundId: string): HTMLAudioElement {
   const sound = soundById(soundId);
   let el = audioCache.get(sound.id);
   if (!el) {
-    const base = (import.meta && import.meta.env && import.meta.env.BASE_URL) || './';
+    const base = import.meta.env.BASE_URL || './';
     el = new Audio(`${base}${sound.id}.wav`);
     el.preload = 'auto';
     audioCache.set(sound.id, el);
@@ -31,7 +32,7 @@ function audioFor(soundId) {
   return el;
 }
 
-export async function playBellChime(soundId = DEFAULT_SOUND_ID) {
+export async function playBellChime(soundId: string = DEFAULT_SOUND_ID): Promise<void> {
   try {
     const el = audioFor(soundId);
     el.currentTime = 0;
@@ -43,9 +44,7 @@ export async function playBellChime(soundId = DEFAULT_SOUND_ID) {
   synthesizeBell();
 }
 
-// Generic soft bell synthesized via Web Audio — used only as a last resort
-// when HTMLAudio is blocked. We don't try to mimic each cataloged sound here.
-function synthesizeBell() {
+function synthesizeBell(): void {
   const ctx = getAudioCtx();
   if (!ctx) return;
   const now = ctx.currentTime;

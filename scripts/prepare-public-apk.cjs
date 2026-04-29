@@ -13,7 +13,7 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const SRC  = path.join(ROOT, 'release', 'mantrabe-android-latest.apk');
 const DST  = path.join(ROOT, 'public', 'mantrabe-android.apk');
-const INFO = path.join(ROOT, 'src', 'build-info.js');
+const INFO = path.join(ROOT, 'src', 'build-info.ts');
 
 let hasApk = false;
 let bytes = 0;
