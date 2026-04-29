@@ -1,17 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Adaptive icon foreground — the brushed enso + warm-gold dot from
-  public/icon.svg, expressed as a VectorDrawable so it renders crisp at
-  any density.
+  Adaptive icon foreground — the brushed enso from the empty-state logo
+  in the web app (the `strong` variant of <Enso/>). 108x108 matches
+  Android's adaptive-icon convention; the inner 66dp safe zone is what
+  the launcher will always show, so the enso (r=32 around the center)
+  fills it confidently without risking a crop.
 
-  The 108x108 viewport matches Android's adaptive-icon convention: the
-  outer ~18dp ring will be cropped/masked by the launcher (square,
-  circle, squircle…), so the iconography stays inside the inner 72dp
-  safe zone. Hence the enso is sized to ~24dp radius around the center.
-
-  VectorDrawable doesn't support stroke-dasharray, so the brushed gap
-  is approximated with `trimPathStart`/`trimPathEnd` — a single visible
-  break in the stroke instead of the multi-dash pattern from the SVG.
+  We avoid trimPathStart/trimPathEnd here because static VectorDrawable
+  rendering of those is buggy on multiple OEM launchers — when they
+  fail, the icon falls back to whatever PNG mipmap-anydpi-v26 picks up
+  from the legacy density buckets, which is Capacitor's default robot.
+  Instead, the brushed gap is baked into the path: the arc starts at
+  ~280.8° and sweeps clockwise back to ~259.2°, leaving a ~21° gap
+  centered at the top. The wrapping <group> rotates the whole thing
+  -22° so the gap reads as a brushstroke break in the upper-right,
+  matching the website logo.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -23,15 +26,11 @@
         android:pivotY="54"
         android:rotation="-22">
         <path
+            android:fillColor="#00000000"
             android:strokeColor="#2a241c"
-            android:strokeWidth="3.6"
+            android:strokeWidth="4"
+            android:strokeAlpha="0.85"
             android:strokeLineCap="round"
-            android:trimPathStart="0.04"
-            android:trimPathEnd="0.97"
-            android:pathData="M 30 54 a 24 24 0 1 1 48 0 a 24 24 0 1 1 -48 0 Z" />
+            android:pathData="M 60 22.6 A 32 32 0 1 1 48 22.6" />
     </group>
-    <!-- Warm-gold dot at the top, in the unrotated frame. -->
-    <path
-        android:fillColor="#b08d57"
-        android:pathData="M 54 22 m -2.8 0 a 2.8 2.8 0 1 0 5.6 0 a 2.8 2.8 0 1 0 -5.6 0 Z" />
 </vector>
