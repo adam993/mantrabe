@@ -52,6 +52,23 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
+      - name: Restore stable debug keystore
+        # Without this, every CI run generates a fresh ~/.android/debug.keystore
+        # and the resulting APK is signed by a different key each time —
+        # devices then refuse to install the new APK over the old one with
+        # INSTALL_FAILED_UPDATE_INCOMPATIBLE. The secret holds a base64-encoded
+        # keystore (alias: androiddebugkey, store/key pass: android, default
+        # debug-style identity). Generate once, never rotate unless you're
+        # ready to ask every existing user to uninstall.
+        env:
+          ANDROID_DEBUG_KEYSTORE_B64: ${{ secrets.ANDROID_DEBUG_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.android"
+          printf '%s' "$ANDROID_DEBUG_KEYSTORE_B64" | base64 -d > "$HOME/.android/debug.keystore"
+          # Sanity-check: keytool exits non-zero if the file isn't a valid keystore.
+          keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android >/dev/null
+
       - name: Build Android APK
         # Vite inlines VITE_* env at bundle time — without these the
         # Supabase client initializes as disabled and the sign-in UI

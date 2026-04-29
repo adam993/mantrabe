@@ -21,6 +21,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@capacitor/app@npm:^8.1.0":
+  version: 8.1.0
+  resolution: "@capacitor/app@npm:8.1.0"
+  peerDependencies:
+    "@capacitor/core": ">=8.0.0"
+  checksum: 10c0/670a5bc3f0c1706f9d09ad03873836ac9b56e1ca6c9853e283d43b4ff04c7295b30801d49f563206aadcf882245025be1ecdc12c22c7d479c636b34123e9a0d3
+  languageName: node
+  linkType: hard
+
 "@capacitor/cli@npm:^8.3.1":
   version: 8.3.1
   resolution: "@capacitor/cli@npm:8.3.1"
@@ -3349,6 +3358,7 @@ __metadata:
   resolution: "mantrabe@workspace:."
   dependencies:
     "@capacitor/android": "npm:^8.3.1"
+    "@capacitor/app": "npm:^8.1.0"
     "@capacitor/cli": "npm:^8.3.1"
     "@capacitor/core": "npm:^8.3.1"
     "@capacitor/ios": "npm:^8.3.1"

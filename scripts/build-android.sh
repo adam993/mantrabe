@@ -52,6 +52,9 @@ cp public/*.wav android/app/src/main/res/raw/
 echo "==> Syncing Capacitor with Android"
 yarn cap sync android
 
+echo "==> Applying Mantrabe-specific Android overrides"
+node scripts/apply-android-customizations.cjs
+
 echo "==> Building APK (debug)"
 ( cd android && ./gradlew assembleDebug )
 

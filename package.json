@@ -1,6 +1,6 @@
 {
   "name": "mantrabe",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Mantrabe — a serene cross-platform mantra reminder. Works offline; optional cloud sync.",
   "type": "module",
   "main": "electron/main.cjs",
@@ -42,6 +42,7 @@
   "license": "MIT",
   "dependencies": {
     "@capacitor/android": "^8.3.1",
+    "@capacitor/app": "^8.1.0",
     "@capacitor/core": "^8.3.1",
     "@capacitor/ios": "^8.3.1",
     "@capacitor/local-notifications": "^8.0.2",

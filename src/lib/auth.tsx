@@ -1,5 +1,7 @@
 import * as React from 'react';
 import type { Session, User } from '@supabase/supabase-js';
+import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 import { supabase, SUPABASE_ENABLED } from '@/lib/supabase';
 
 interface AuthContextValue {
@@ -13,6 +15,39 @@ interface AuthContextValue {
 }
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
+
+// Custom URL scheme used for auth-callback deep links on native. Mirrors
+// the intent filter in scripts/apply-android-customizations.cjs and the
+// scheme entry in Supabase Auth → URL Configuration → Redirect URLs.
+const NATIVE_REDIRECT = 'com.mantrabe.app://auth-callback';
+
+function isNative(): boolean {
+  try {
+    return Capacitor.isNativePlatform();
+  } catch {
+    return false;
+  }
+}
+
+function authRedirectUrl(): string {
+  if (isNative()) return NATIVE_REDIRECT;
+  return typeof window !== 'undefined' ? window.location.origin : '';
+}
+
+// On native, Supabase's browser auth flow won't see the magic-link
+// callback (the link opens the OS browser, not the app). The intent
+// filter routes com.mantrabe.app://auth-callback#... back into the app
+// and Capacitor surfaces it via App.appUrlOpen — at which point we
+// hand the URL fragment to supabase-js so it can complete the session.
+function extractTokens(url: string): { access_token: string; refresh_token: string } | null {
+  const hashIdx = url.indexOf('#');
+  if (hashIdx === -1) return null;
+  const params = new URLSearchParams(url.slice(hashIdx + 1));
+  const access_token = params.get('access_token');
+  const refresh_token = params.get('refresh_token');
+  if (!access_token || !refresh_token) return null;
+  return { access_token, refresh_token };
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = React.useState<Session | null>(null);
@@ -38,11 +73,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Native-only: when the OS hands us a com.mantrabe.app:// URL (because
+  // the user tapped the magic link in their email), pull the access /
+  // refresh tokens out of the fragment and complete the session.
+  React.useEffect(() => {
+    const sb = supabase;
+    if (!sb || !isNative()) return;
+    const handle = CapacitorApp.addListener('appUrlOpen', async (event) => {
+      const tokens = extractTokens(event.url);
+      if (!tokens) return;
+      const { error } = await sb.auth.setSession(tokens);
+      if (error) console.error('appUrlOpen setSession failed:', error);
+    });
+    return () => {
+      void handle.then((h) => h.remove());
+    };
+  }, []);
+
   const signInWithOAuth = React.useCallback(async (provider: 'google' | 'github') => {
     if (!supabase) throw new Error('Supabase not configured.');
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: authRedirectUrl() },
     });
     if (error) throw error;
   }, []);
@@ -51,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!supabase) throw new Error('Supabase not configured.');
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: window.location.origin },
+      options: { emailRedirectTo: authRedirectUrl() },
     });
     if (error) throw error;
   }, []);
