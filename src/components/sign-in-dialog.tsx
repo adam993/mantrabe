@@ -1,16 +1,16 @@
-import * as React from 'react';
-import { Mail } from 'lucide-react';
+import * as React from "react";
+import { Mail } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useAuth } from '@/lib/auth';
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useAuth } from "@/lib/auth";
 
 interface Props {
   open: boolean;
@@ -19,21 +19,21 @@ interface Props {
 
 export function SignInDialog({ open, onOpenChange }: Props) {
   const { signInWithOAuth, signInWithEmail } = useAuth();
-  const [email, setEmail] = React.useState('');
+  const [email, setEmail] = React.useState("");
   const [emailSent, setEmailSent] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
 
   React.useEffect(() => {
     if (!open) {
-      setEmail('');
+      setEmail("");
       setEmailSent(false);
       setError(null);
       setBusy(false);
     }
   }, [open]);
 
-  const oauth = async (provider: 'google' | 'github') => {
+  const oauth = async (provider: "google" | "github") => {
     setError(null);
     setBusy(true);
     try {
@@ -63,10 +63,12 @@ export function SignInDialog({ open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent data-id="sign-in-dialog" className="sm:max-w-[420px]">
         <DialogHeader>
-          <DialogTitle data-id="sign-in-dialog-title">Sign in to sync</DialogTitle>
+          <DialogTitle data-id="sign-in-dialog-title">
+            Sign in to sync
+          </DialogTitle>
           <DialogDescription data-id="sign-in-dialog-description">
-            Optional. Your mantras will sync across devices. You can keep using Mantrabe without an
-            account.
+            Optional. Your mantras will sync across devices. You can keep using
+            Mantrabe without an account.
           </DialogDescription>
         </DialogHeader>
 
@@ -80,7 +82,7 @@ export function SignInDialog({ open, onOpenChange }: Props) {
         ) : (
           <>
             <div data-id="sign-in-dialog-oauth" className="flex flex-col gap-2">
-              <Button
+              {/* <Button
                 data-id="sign-in-dialog-google"
                 variant="ghost"
                 disabled={busy}
@@ -95,17 +97,17 @@ export function SignInDialog({ open, onOpenChange }: Props) {
                 onClick={() => oauth('github')}
               >
                 Continue with GitHub
-              </Button>
+              </Button> */}
             </div>
 
-            <div
+            {/* <div
               data-id="sign-in-dialog-divider"
               className="flex items-center gap-3 text-xs uppercase tracking-wider text-muted-foreground"
             >
               <span className="h-px flex-1 bg-border" />
               or
               <span className="h-px flex-1 bg-border" />
-            </div>
+            </div> */}
 
             <form
               data-id="sign-in-dialog-email-form"
@@ -138,7 +140,11 @@ export function SignInDialog({ open, onOpenChange }: Props) {
         )}
 
         {error && (
-          <p data-id="sign-in-dialog-error" className="text-sm text-destructive" role="alert">
+          <p
+            data-id="sign-in-dialog-error"
+            className="text-sm text-destructive"
+            role="alert"
+          >
             {error}
           </p>
         )}

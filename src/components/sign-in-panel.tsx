@@ -1,8 +1,8 @@
-import * as React from 'react';
-import { ChevronDown, Cloud, Mail } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { useAuth } from '@/lib/auth';
+import * as React from "react";
+import { ChevronDown, Cloud, Mail } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useAuth } from "@/lib/auth";
 
 /**
  * Inline sign-in entry point. Renders collapsed by default — just a
@@ -11,16 +11,17 @@ import { useAuth } from '@/lib/auth';
  * uncluttered for users who don't want sync.
  */
 export function SignInPanel() {
-  const { enabled, user, loading, signInWithOAuth, signInWithEmail } = useAuth();
+  const { enabled, user, loading, signInWithOAuth, signInWithEmail } =
+    useAuth();
   const [open, setOpen] = React.useState(false);
-  const [email, setEmail] = React.useState('');
+  const [email, setEmail] = React.useState("");
   const [emailSent, setEmailSent] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   if (!enabled || loading || user) return null;
 
-  const oauth = async (provider: 'google' | 'github') => {
+  const oauth = async (provider: "google" | "github") => {
     setError(null);
     setBusy(true);
     try {
@@ -60,25 +61,32 @@ export function SignInPanel() {
         aria-controls="sign-in-panel-body"
         className="flex w-full items-center gap-3 text-left"
       >
-        <Cloud className="h-5 w-5 flex-shrink-0 text-accent" aria-hidden="true" />
+        <Cloud
+          className="h-5 w-5 flex-shrink-0 text-accent"
+          aria-hidden="true"
+        />
         <span className="flex-1 font-serif-zen text-[1.05rem] font-medium tracking-wide">
           Sync across devices
         </span>
         <ChevronDown
           className={`h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform ${
-            open ? 'rotate-180' : ''
+            open ? "rotate-180" : ""
           }`}
           aria-hidden="true"
         />
       </button>
 
       {open && (
-        <div id="sign-in-panel-body" data-id="sign-in-panel-body" className="flex flex-col gap-3">
+        <div
+          id="sign-in-panel-body"
+          data-id="sign-in-panel-body"
+          className="flex flex-col gap-3"
+        >
           <p className="m-0 text-sm text-muted-foreground">
             Optional. Connect to keep your mantras safe and on every device.
           </p>
 
-          <div data-id="sign-in-panel-buttons" className="flex flex-col gap-2">
+          {/* <div data-id="sign-in-panel-buttons" className="flex flex-col gap-2">
             <Button
               data-id="sign-in-panel-google"
               variant="ghost"
@@ -95,7 +103,7 @@ export function SignInPanel() {
             >
               Connect with GitHub
             </Button>
-          </div>
+          </div> */}
 
           {emailSent ? (
             <div
@@ -132,7 +140,11 @@ export function SignInPanel() {
           )}
 
           {error && (
-            <p data-id="sign-in-panel-error" className="text-sm text-destructive" role="alert">
+            <p
+              data-id="sign-in-panel-error"
+              className="text-sm text-destructive"
+              role="alert"
+            >
               {error}
             </p>
           )}
