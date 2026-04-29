@@ -27,6 +27,12 @@ interface Props {
   onDelete: (id: string) => void;
   onToggle: (id: string, enabled: boolean) => void;
   onSyncNow: () => void;
+  /**
+   * When false, hides the top logo bar and the inline "Sync across devices"
+   * panel. Used by the Android first-run flow so the empty state stays
+   * focused on getting the user's first mantra in.
+   */
+  chrome?: boolean;
 }
 
 export function MantraList({
@@ -37,6 +43,7 @@ export function MantraList({
   onDelete,
   onToggle,
   onSyncNow,
+  chrome = true,
 }: Props) {
   const [confirmDelete, setConfirmDelete] = React.useState<string | null>(null);
   const target = mantras.find((m) => m.id === confirmDelete) ?? null;
@@ -44,28 +51,31 @@ export function MantraList({
   return (
     <main
       data-id="list-screen"
+      data-chrome={chrome}
       className="screen-fade mx-auto flex w-full max-w-[var(--topbar-width)] flex-1 flex-col gap-5 p-5"
     >
-      <header
-        data-id="list-topbar"
-        className="mx-auto flex w-full max-w-[var(--content-width)] items-center gap-3 py-3"
-      >
-        <div
-          data-id="list-topbar-title"
-          className="flex flex-1 items-center gap-3 font-serif-zen text-[1.45rem] font-medium tracking-wide"
+      {chrome && (
+        <header
+          data-id="list-topbar"
+          className="mx-auto flex w-full max-w-[var(--content-width)] items-center gap-3 py-3"
         >
-          <Enso strokeWidth={4.7} />
-          <span>Mantrabe</span>
-          <span
-            data-id="list-topbar-version"
-            className="self-end pb-1 text-[0.72rem] font-normal tracking-wider text-muted-foreground/65"
-            title={`Mantrabe v${VERSION}`}
+          <div
+            data-id="list-topbar-title"
+            className="flex flex-1 items-center gap-3 font-serif-zen text-[1.45rem] font-medium tracking-wide"
           >
-            v{VERSION}
-          </span>
-        </div>
-        <AccountMenu syncing={syncing} onSyncNow={onSyncNow} />
-      </header>
+            <Enso strokeWidth={4.7} />
+            <span>Mantrabe</span>
+            <span
+              data-id="list-topbar-version"
+              className="self-end pb-1 text-[0.72rem] font-normal tracking-wider text-muted-foreground/65"
+              title={`Mantrabe v${VERSION}`}
+            >
+              v{VERSION}
+            </span>
+          </div>
+          <AccountMenu syncing={syncing} onSyncNow={onSyncNow} />
+        </header>
+      )}
 
       {mantras.length === 0 ? (
         <div
@@ -114,7 +124,7 @@ export function MantraList({
         </>
       )}
 
-      <SignInPanel />
+      {chrome && <SignInPanel />}
 
       <AlertDialog
         open={confirmDelete !== null}
