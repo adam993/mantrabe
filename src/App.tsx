@@ -26,7 +26,7 @@ function Shell() {
     <div
       data-id="app-shell"
       data-screen={screen.name}
-      className="mx-auto flex min-h-screen w-full flex-1 flex-col"
+      className="mx-auto flex min-h-screen w-full flex-1 flex-col pt-[var(--safe-top)]"
     >
       <PermissionBanner permission={permission} onEnable={() => void request()} />
       <SyncErrorToast error={syncError} />

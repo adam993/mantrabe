@@ -20,3 +20,18 @@
   to = "https://github.com/adam993/mantrabe/releases/download/android-latest/mantrabe-android-latest.apk"
   status = 302
   force = true
+
+# Legacy path that earlier web bundles linked to. Already-loaded
+# clients in the wild still resolve their cached href against this
+# path, so keep redirecting it to the same release asset.
+[[redirects]]
+  from = "/latest-release.apk"
+  to = "https://github.com/adam993/mantrabe/releases/download/android-latest/mantrabe-android-latest.apk"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/mantrabe-android-latest.apk"
+  to = "https://github.com/adam993/mantrabe/releases/download/android-latest/mantrabe-android-latest.apk"
+  status = 302
+  force = true

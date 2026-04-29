@@ -65,15 +65,6 @@ export function MantraList({
           </span>
         </div>
         <AccountMenu syncing={syncing} onSyncNow={onSyncNow} />
-        <Button
-          data-id="list-add-button"
-          size="icon"
-          onClick={onAdd}
-          aria-label="Add new entry"
-          title="Add new entry"
-        >
-          <Plus className="h-5 w-5" />
-        </Button>
       </header>
 
       {mantras.length === 0 ? (
@@ -96,20 +87,31 @@ export function MantraList({
           </Button>
         </div>
       ) : (
-        <ul
-          data-id="list-items"
-          className="mx-auto m-0 flex w-full max-w-[var(--content-width)] list-none flex-col gap-3 p-0"
-        >
-          {mantras.map((m) => (
-            <EntryCard
-              key={m.id}
-              mantra={m}
-              onEdit={onEdit}
-              onToggle={onToggle}
-              onDeleteRequest={(id) => setConfirmDelete(id)}
-            />
-          ))}
-        </ul>
+        <>
+          <ul
+            data-id="list-items"
+            className="mx-auto m-0 flex w-full max-w-[var(--content-width)] list-none flex-col gap-3 p-0 items-end"
+          >
+            {mantras.map((m) => (
+              <EntryCard
+                key={m.id}
+                mantra={m}
+                onEdit={onEdit}
+                onToggle={onToggle}
+                onDeleteRequest={(id) => setConfirmDelete(id)}
+              />
+            ))}
+            <Button
+              data-id="list-add-button"
+              size="icon"
+              onClick={onAdd}
+              aria-label="Add new entry"
+              title="Add new entry"
+            >
+              <Plus className="h-5 w-5" />
+            </Button>
+          </ul>
+        </>
       )}
 
       <SignInPanel />
