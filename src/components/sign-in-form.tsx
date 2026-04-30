@@ -20,25 +20,29 @@ interface Props {
 }
 
 /**
- * Magic-link sign-in form. The dialog and the inline panel both wrap
- * this — the only differences are surrounding chrome (modal vs
- * collapsible section) and field layout.
+ * Email sign-in form. Supabase sends both a magic link AND a 6-digit
+ * code in the same email. Tapping the link works on desktop / native,
+ * but on iOS PWAs the link opens Safari (separate storage from the
+ * installed PWA), so we also let the user paste the code to complete
+ * sign-in inside whichever browser context they started in.
  */
 export function SignInForm({ layout, idPrefix, resetSignal }: Props) {
-  const { signInWithEmail } = useAuth();
+  const { signInWithEmail, verifyEmailOtp } = useAuth();
   const [email, setEmail] = React.useState('');
   const [emailSent, setEmailSent] = React.useState(false);
+  const [code, setCode] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     setEmail('');
     setEmailSent(false);
+    setCode('');
     setBusy(false);
     setError(null);
   }, [resetSignal]);
 
-  const onSubmit = async (e: React.FormEvent) => {
+  const onSendEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
     setError(null);
@@ -53,26 +57,121 @@ export function SignInForm({ layout, idPrefix, resetSignal }: Props) {
     }
   };
 
-  if (emailSent) {
-    return (
-      <div
-        data-id={`${idPrefix}-email-sent`}
-        className="rounded-md border border-border bg-muted px-4 py-3 text-sm"
-      >
-        Check your email for the sign-in link.
-      </div>
-    );
-  }
+  const onVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = code.trim();
+    if (!trimmed) return;
+    setError(null);
+    setBusy(true);
+    try {
+      await verifyEmailOtp(email.trim(), trimmed);
+      // On success, AuthProvider's onAuthStateChange will flip the UI;
+      // no further state to update here.
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const isDialog = layout === 'dialog';
   const inputId = `${idPrefix}-email`;
+  const codeInputId = `${idPrefix}-code`;
+
+  if (emailSent) {
+    return (
+      <div data-id={`${idPrefix}-verify`} className="flex flex-col gap-3">
+        <div
+          data-id={`${idPrefix}-email-sent`}
+          className="rounded-md border border-border bg-muted px-4 py-3 text-sm"
+        >
+          We emailed a sign-in link and a 6-digit code to{' '}
+          <span className="font-medium">{email}</span>. Tap the link, or paste
+          the code below if the link opens in another browser (e.g. on an iOS
+          home-screen app).
+        </div>
+
+        <form
+          data-id={`${idPrefix}-code-form`}
+          className={isDialog ? 'flex flex-col gap-3' : 'flex flex-col gap-2 sm:flex-row'}
+          onSubmit={onVerifyCode}
+        >
+          {isDialog ? (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor={codeInputId}>6-digit code</Label>
+              <Input
+                data-id={`${idPrefix}-code-input`}
+                id={codeInputId}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="one-time-code"
+                maxLength={6}
+                required
+                placeholder="123456"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                disabled={busy}
+              />
+            </div>
+          ) : (
+            <Input
+              data-id={`${idPrefix}-code-input`}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              autoComplete="one-time-code"
+              maxLength={6}
+              required
+              placeholder="6-digit code"
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+              disabled={busy}
+              className="flex-1"
+            />
+          )}
+          <Button
+            data-id={`${idPrefix}-code-submit`}
+            type="submit"
+            disabled={busy || code.trim().length < 6}
+          >
+            Verify code
+          </Button>
+        </form>
+
+        <button
+          data-id={`${idPrefix}-resend`}
+          type="button"
+          className="self-start text-sm text-muted-foreground underline-offset-2 hover:underline disabled:opacity-50"
+          disabled={busy}
+          onClick={() => {
+            setEmailSent(false);
+            setCode('');
+            setError(null);
+          }}
+        >
+          Use a different email
+        </button>
+
+        {error && (
+          <p
+            data-id={`${idPrefix}-error`}
+            className="text-sm text-destructive"
+            role="alert"
+          >
+            {error}
+          </p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <>
       <form
         data-id={`${idPrefix}-email-form`}
         className={isDialog ? 'flex flex-col gap-3' : 'flex flex-col gap-2 sm:flex-row'}
-        onSubmit={onSubmit}
+        onSubmit={onSendEmail}
       >
         {isDialog ? (
           <div className="flex flex-col gap-1.5">
@@ -107,7 +206,7 @@ export function SignInForm({ layout, idPrefix, resetSignal }: Props) {
           type="submit"
           disabled={busy || !email.trim()}
         >
-          <Mail className="h-4 w-4" /> {isDialog ? 'Send magic link' : 'Send link'}
+          <Mail className="h-4 w-4" /> {isDialog ? 'Send link & code' : 'Send'}
         </Button>
       </form>
 

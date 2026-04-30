@@ -45,6 +45,7 @@ interface AuthContextValue {
   user: User | null;
   session: Session | null;
   signInWithEmail: (email: string) => Promise<void>;
+  verifyEmailOtp: (email: string, token: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -130,6 +131,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Same email Supabase sends for the magic link also includes a 6-digit
+  // {{ .Token }} code. Verifying that code completes the session inside
+  // whatever browser context the user is in — critical for iOS PWAs,
+  // where tapping the magic link opens Safari instead of the installed
+  // PWA, leaving the PWA's storage without a session.
+  const verifyEmailOtp = React.useCallback(async (email: string, token: string) => {
+    if (!supabase) throw new Error('Supabase not configured.');
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'email',
+    });
+    if (error) {
+      console.error('verifyOtp failed:', error);
+      throw new Error(prettifyAuthError(error));
+    }
+  }, []);
+
   const signOut = React.useCallback(async () => {
     if (!supabase) return;
     const { error } = await supabase.auth.signOut();
@@ -143,9 +162,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: session?.user ?? null,
       session,
       signInWithEmail,
+      verifyEmailOtp,
       signOut,
     }),
-    [loading, session, signInWithEmail, signOut],
+    [loading, session, signInWithEmail, verifyEmailOtp, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
