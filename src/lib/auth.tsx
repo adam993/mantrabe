@@ -36,6 +36,18 @@ function prettifyAuthError(err: AuthError | Error): string {
     return "That doesn't look like a valid email address.";
   }
 
+  if (code === 'invalid_credentials' || /invalid.*(login|credentials|password)/i.test(raw)) {
+    return 'Wrong email or password.';
+  }
+
+  if (code === 'user_already_exists' || /already.*registered/i.test(raw)) {
+    return 'An account with this email already exists. Try signing in instead.';
+  }
+
+  if (code === 'weak_password' || /password.*(short|weak|requirements)/i.test(raw)) {
+    return 'Password is too weak. Use at least 6 characters.';
+  }
+
   return raw || 'Sign-in failed. Please try again.';
 }
 
@@ -46,6 +58,9 @@ interface AuthContextValue {
   session: Session | null;
   signInWithEmail: (email: string) => Promise<void>;
   verifyEmailOtp: (email: string, token: string) => Promise<void>;
+  signUpWithPassword: (email: string, password: string) => Promise<void>;
+  signInWithPassword: (email: string, password: string) => Promise<void>;
+  setPassword: (newPassword: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -119,10 +134,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithEmail = React.useCallback(async (email: string) => {
     if (!supabase) throw new Error('Supabase not configured.');
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: authRedirectUrl() },
-    });
+    // IMPORTANT: do NOT pass emailRedirectTo here. When it's present,
+    // Supabase issues the OTP in "redirect-bound" mode — the server
+    // expects the magic-link redirect handshake to consume it, and
+    // /verify with the 6-digit token returns "Token has expired or is
+    // invalid" even when the code is correct and unexpired. Omitting it
+    // gives us a pure email-OTP token that verifyOtp can validate
+    // directly. The template should also be Token-only (no
+    // {{ .ConfirmationURL }}) to avoid email-scanner prefetch consuming
+    // the same underlying token slot.
+    const { error } = await supabase.auth.signInWithOtp({ email });
     if (error) {
       // Keep the raw error in the console for diagnosis — quota vs SMTP
       // creds vs Brevo outage all hit the same user-facing branch.
@@ -131,20 +152,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Same email Supabase sends for the magic link also includes a 6-digit
-  // {{ .Token }} code. Verifying that code completes the session inside
-  // whatever browser context the user is in — critical for iOS PWAs,
-  // where tapping the magic link opens Safari instead of the installed
-  // PWA, leaving the PWA's storage without a session.
+  // Verify a 6-digit code from the OTP email. Supabase issues the token
+  // under different `type`s depending on user state:
+  //   - first-time email (no existing user): `signup`
+  //   - existing user via signInWithOtp:      `magiclink` or `email`
+  // The frontend doesn't know which case applies, and a wrong type
+  // returns the generic 403 "Token has expired or is invalid". So we
+  // try them in order of likelihood and only surface the error if all
+  // fail. (Genuine errors like rate limit / bad email exit early.)
   const verifyEmailOtp = React.useCallback(async (email: string, token: string) => {
     if (!supabase) throw new Error('Supabase not configured.');
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: 'email',
-    });
+    const types: Array<'email' | 'magiclink' | 'signup'> = ['email', 'magiclink', 'signup'];
+    let lastError: AuthError | null = null;
+    for (const type of types) {
+      const { error } = await supabase.auth.verifyOtp({ email, token, type });
+      if (!error) return;
+      lastError = error;
+      if (!/expired|invalid|not.*found/i.test(error.message)) break;
+    }
+    if (lastError) {
+      console.error('verifyOtp failed:', lastError);
+      throw new Error(prettifyAuthError(lastError));
+    }
+  }, []);
+
+  // Email + password fallback. Reliable when the OTP path is broken by
+  // email-scanner prefetching (Gmail, corporate scanners, etc.) that
+  // consume the token before the user enters it. For this to work as a
+  // real first-time-signup path, the Supabase project must have
+  // "Confirm email" turned OFF (Auth → Providers → Email). Otherwise
+  // signUp creates an unconfirmed user and the same OTP-via-email loop
+  // re-emerges.
+  const signUpWithPassword = React.useCallback(async (email: string, password: string) => {
+    if (!supabase) throw new Error('Supabase not configured.');
+    const { error } = await supabase.auth.signUp({ email, password });
     if (error) {
-      console.error('verifyOtp failed:', error);
+      console.error('signUp failed:', error);
+      throw new Error(prettifyAuthError(error));
+    }
+  }, []);
+
+  const signInWithPassword = React.useCallback(async (email: string, password: string) => {
+    if (!supabase) throw new Error('Supabase not configured.');
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      console.error('signInWithPassword failed:', error);
+      throw new Error(prettifyAuthError(error));
+    }
+  }, []);
+
+  // Sets / changes the password on the currently-authenticated user.
+  // This is the bootstrap path for accounts that were originally created
+  // via magic link and therefore have no password — once the user signs
+  // in once via the email-code flow, they can set a password here and
+  // use signInWithPassword on future devices without depending on email
+  // delivery at all.
+  const setPassword = React.useCallback(async (newPassword: string) => {
+    if (!supabase) throw new Error('Supabase not configured.');
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      console.error('updateUser(password) failed:', error);
       throw new Error(prettifyAuthError(error));
     }
   }, []);
@@ -163,9 +230,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       session,
       signInWithEmail,
       verifyEmailOtp,
+      signUpWithPassword,
+      signInWithPassword,
+      setPassword,
       signOut,
     }),
-    [loading, session, signInWithEmail, verifyEmailOtp, signOut],
+    [loading, session, signInWithEmail, verifyEmailOtp, signUpWithPassword, signInWithPassword, setPassword, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

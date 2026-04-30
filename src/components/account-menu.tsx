@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { LogIn, LogOut, RefreshCw, Cloud, CloudOff } from 'lucide-react';
+import { LogIn, LogOut, RefreshCw, Cloud, CloudOff, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/lib/auth';
 import { SignInDialog } from '@/components/sign-in-dialog';
+import { SetPasswordDialog } from '@/components/set-password-dialog';
 
 interface Props {
   syncing: boolean;
@@ -20,6 +21,7 @@ interface Props {
 export function AccountMenu({ syncing, onSyncNow }: Props) {
   const { enabled, user, loading, signOut } = useAuth();
   const [signInOpen, setSignInOpen] = React.useState(false);
+  const [setPasswordOpen, setSetPasswordOpen] = React.useState(false);
 
   if (!enabled) return null;
   if (loading) {
@@ -61,6 +63,7 @@ export function AccountMenu({ syncing, onSyncNow }: Props) {
     '◯';
 
   return (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
@@ -90,6 +93,13 @@ export function AccountMenu({ syncing, onSyncNow }: Props) {
           {syncing ? 'Syncing…' : 'Sync now'}
         </DropdownMenuItem>
         <DropdownMenuItem
+          data-id="account-menu-set-password"
+          onSelect={() => setSetPasswordOpen(true)}
+        >
+          <KeyRound className="h-4 w-4" />
+          Set password
+        </DropdownMenuItem>
+        <DropdownMenuItem
           data-id="account-menu-sign-out"
           onSelect={() => {
             signOut().catch((err) => console.error('signOut failed:', err));
@@ -108,5 +118,7 @@ export function AccountMenu({ syncing, onSyncNow }: Props) {
         </div>
       </DropdownMenuContent>
     </DropdownMenu>
+    <SetPasswordDialog open={setPasswordOpen} onOpenChange={setSetPasswordOpen} />
+    </>
   );
 }
