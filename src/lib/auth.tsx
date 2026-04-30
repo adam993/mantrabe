@@ -1,8 +1,43 @@
 import * as React from 'react';
-import type { Session, User } from '@supabase/supabase-js';
+import type { AuthError, Session, User } from '@supabase/supabase-js';
 import { App as CapacitorApp } from '@capacitor/app';
 import { isNative } from '@/lib/platform';
 import { supabase, SUPABASE_ENABLED } from '@/lib/supabase';
+
+// Map Supabase auth errors to messages a user can act on. The most
+// common silent failure here is the upstream SMTP (Brevo, free tier =
+// 300 emails / month) hitting its monthly quota — Supabase surfaces
+// that as a 500 with "Error sending magic link email", which is
+// useless to the user. Anything we don't recognize falls through with
+// the original message.
+function prettifyAuthError(err: AuthError | Error): string {
+  const status = (err as Partial<AuthError>).status;
+  const code = (err as Partial<AuthError>).code;
+  const raw = err.message || '';
+
+  // Per-IP / per-email rate limit on Supabase's side. Distinct from
+  // the Brevo monthly quota — this resets on the order of minutes.
+  if (status === 429 || code === 'over_email_send_rate_limit') {
+    return 'Too many sign-in attempts in a short window. Please wait a minute and try again.';
+  }
+
+  // Email delivery failure. Could be Brevo over its monthly quota,
+  // bad SMTP creds, or Brevo itself being down — from the user's
+  // perspective they all look the same: the email won't arrive.
+  if (
+    status === 500 ||
+    code === 'unexpected_failure' ||
+    /sending.*(magic|email|otp|sign[-_ ]?in|confirmation)/i.test(raw)
+  ) {
+    return "Couldn't send the sign-in email right now — our email service may be over its monthly limit or temporarily down. Please try again later. Your mantras still work locally without signing in.";
+  }
+
+  if (/invalid.*(email|address)/i.test(raw)) {
+    return "That doesn't look like a valid email address.";
+  }
+
+  return raw || 'Sign-in failed. Please try again.';
+}
 
 interface AuthContextValue {
   enabled: boolean;
@@ -87,7 +122,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email,
       options: { emailRedirectTo: authRedirectUrl() },
     });
-    if (error) throw error;
+    if (error) {
+      // Keep the raw error in the console for diagnosis — quota vs SMTP
+      // creds vs Brevo outage all hit the same user-facing branch.
+      console.error('signInWithOtp failed:', error);
+      throw new Error(prettifyAuthError(error));
+    }
   }, []);
 
   const signOut = React.useCallback(async () => {

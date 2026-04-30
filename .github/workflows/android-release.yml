@@ -64,10 +64,19 @@ jobs:
           ANDROID_DEBUG_KEYSTORE_B64: ${{ secrets.ANDROID_DEBUG_KEYSTORE_B64 }}
         run: |
           set -euo pipefail
+          if [ -z "${ANDROID_DEBUG_KEYSTORE_B64:-}" ]; then
+            echo "::error::ANDROID_DEBUG_KEYSTORE_B64 secret is missing or empty. Re-upload it with:" >&2
+            echo "::error::  base64 -w0 release/mantrabe-debug.keystore | gh secret set ANDROID_DEBUG_KEYSTORE_B64" >&2
+            echo "::error::See the comment block above this step in android-release.yml for why rotating it would break installed users." >&2
+            exit 1
+          fi
           mkdir -p "$HOME/.android"
           printf '%s' "$ANDROID_DEBUG_KEYSTORE_B64" | base64 -d > "$HOME/.android/debug.keystore"
           # Sanity-check: keytool exits non-zero if the file isn't a valid keystore.
-          keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android >/dev/null
+          if ! keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android >/dev/null 2>&1; then
+            echo "::error::ANDROID_DEBUG_KEYSTORE_B64 decoded but is not a valid keystore (storepass=android). Was it base64-encoded with line wrapping? Use 'base64 -w0' when re-uploading." >&2
+            exit 1
+          fi
 
       - name: Build Android APK
         # Vite inlines VITE_* env at bundle time — without these the
