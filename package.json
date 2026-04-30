@@ -1,6 +1,6 @@
 {
   "name": "mantrabe",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Mantrabe — a serene cross-platform mantra reminder. Works offline; optional cloud sync.",
   "type": "module",
   "main": "electron/main.cjs",
@@ -24,6 +24,10 @@
     "electron:dev": "ELECTRON_DEV=1 electron .",
     "build:android": "bash scripts/build-android.sh",
     "build:android-bump": "bash scripts/build-android.sh minor",
+    "build:android-adb": "bash scripts/run-android-adb.sh debug",
+    "build:android-adb-production": "bash scripts/run-android-adb.sh production",
+    "adb": "bash scripts/adb-launch.sh debug",
+    "adb-production": "bash scripts/adb-launch.sh production",
     "build:ios": "bash scripts/build-ios.sh",
     "build:linux": "bash scripts/build-linux.sh",
     "build:all": "bash scripts/build-all.sh",

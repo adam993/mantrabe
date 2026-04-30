@@ -1,14 +1,14 @@
-import * as React from 'react';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
+import * as React from "react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,15 +18,15 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { ONCE_A_DAY } from '@/lib/scheduler';
-import { SOUNDS, DEFAULT_SOUND_ID } from '@/lib/sounds';
-import { playBellChime } from '@/lib/bell-chime';
-import { fireTestNotification } from '@/lib/notifications';
-import { makeMantra } from '@/lib/storage';
-import { KindToggle } from '@/components/kind-toggle';
-import { StepIndicator } from '@/components/step-indicator';
-import type { EntryKind, Mantra } from '@/types/mantra';
+} from "@/components/ui/alert-dialog";
+import { ONCE_A_DAY } from "@/lib/scheduler";
+import { SOUNDS, DEFAULT_SOUND_ID } from "@/lib/sounds";
+import { playBellChime } from "@/lib/bell-chime";
+import { fireTestNotification } from "@/lib/notifications";
+import { makeMantra } from "@/lib/storage";
+import { KindToggle } from "@/components/kind-toggle";
+import { StepIndicator } from "@/components/step-indicator";
+import type { EntryKind, Mantra } from "@/types/mantra";
 
 interface Props {
   initial: Mantra | null;
@@ -39,24 +39,37 @@ interface Props {
 type Step = 1 | 2 | 3;
 const TOTAL_STEPS = 3;
 
-const FREQ_PRESETS: number[] = [5, 10, 15, 30, 45, 60, 90, 120, 180, 240, ONCE_A_DAY];
-const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const FREQ_PRESETS: number[] = [
+  5,
+  10,
+  15,
+  30,
+  45,
+  60,
+  90,
+  120,
+  180,
+  240,
+  ONCE_A_DAY,
+];
+const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const PLACEHOLDER: Record<EntryKind, string> = {
-  mantra: 'e.g. Everything is fine.',
-  reminder: 'e.g. Drink a glass of water.',
+  mantra:
+    "e.g. I must not fear. Fear is the mind-killer. Fear is the little-death that brings total obliteration. I will face my fear. I will permit it to pass over me and through me. And when it has gone past, I will turn the inner eye to see its path. Where the fear has gone there will be nothing. Only I will remain.",
+  reminder: "e.g. Drink a glass of water.",
 };
 
 const STEP_TITLES: Record<Step, string> = {
-  1: 'What to remember',
-  2: 'How often & how it sounds',
-  3: 'When to ring',
+  1: "What to remember",
+  2: "How often & how it sounds",
+  3: "When to ring",
 };
 
 function freqLabel(p: number): string {
-  if (p >= ONCE_A_DAY) return 'Once a day';
+  if (p >= ONCE_A_DAY) return "Once a day";
   if (p < 60) return `Every ${p} minutes`;
-  if (p === 60) return 'Every hour';
+  if (p === 60) return "Every hour";
   return `Every ${p / 60} hours`;
 }
 
@@ -67,13 +80,15 @@ export function MantraEditor({
   onDelete,
   onPermissionGate,
 }: Props) {
-  const [draft, setDraft] = React.useState<Mantra>(() => initial ?? makeMantra({}));
+  const [draft, setDraft] = React.useState<Mantra>(
+    () => initial ?? makeMantra({}),
+  );
   const [step, setStep] = React.useState<Step>(1);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
 
   const canAdvance = step !== 1 || draft.text.trim().length > 0;
   const isLast = step === TOTAL_STEPS;
-  const isReminder = draft.kind === 'reminder';
+  const isReminder = draft.kind === "reminder";
 
   const patch = (p: Partial<Mantra>) => setDraft((d) => ({ ...d, ...p }));
 
@@ -82,7 +97,9 @@ export function MantraEditor({
     if (isLast) {
       const next: Mantra = { ...draft, text: draft.text.trim() };
       await onSave(next);
-      onPermissionGate().catch((err) => console.error('permission gate failed:', err));
+      onPermissionGate().catch((err) =>
+        console.error("permission gate failed:", err),
+      );
       return;
     }
     setStep((s) => (s + 1) as Step);
@@ -110,22 +127,16 @@ export function MantraEditor({
           size="sm"
           onClick={goBack}
         >
-          {step === 1 ? 'Cancel' : '← Back'}
+          {step === 1 ? "Cancel" : "← Back"}
         </Button>
         <div
           data-id="editor-title"
           className="flex flex-1 items-center justify-center font-serif-zen text-[1.25rem] font-medium tracking-wide"
         >
-          {initial
-            ? `Edit ${draft.kind}`
-            : `New ${draft.kind}`}
+          {initial ? `Edit ${draft.kind}` : `New ${draft.kind}`}
         </div>
-        <Button
-          data-id="editor-next"
-          onClick={goNext}
-          disabled={!canAdvance}
-        >
-          {isLast ? 'Save' : 'Next'}
+        <Button data-id="editor-next" onClick={goNext} disabled={!canAdvance}>
+          {isLast ? "Save" : "Next"}
         </Button>
       </header>
 
@@ -139,11 +150,7 @@ export function MantraEditor({
       </p>
 
       {step === 1 && (
-        <Step1
-          draft={draft}
-          patch={patch}
-          isReminder={isReminder}
-        />
+        <Step1 draft={draft} patch={patch} isReminder={isReminder} />
       )}
       {step === 2 && (
         <Step2
@@ -153,6 +160,34 @@ export function MantraEditor({
         />
       )}
       {step === 3 && <Step3 draft={draft} patch={patch} />}
+
+      {/* Shared bottom navigation row, mirrors the topbar pair so the
+          user can advance/retreat without reaching to the top. Larger
+          size + drop shadow makes them stay readable when the grass
+          strip overlays the screen edge. */}
+      <div
+        data-id="editor-step-nav"
+        className="flex justify-between gap-3"
+      >
+        <Button
+          data-id="editor-step-nav-back"
+          variant="ghost"
+          size="lg"
+          className="min-w-28 shadow-md"
+          onClick={goBack}
+        >
+          {step === 1 ? "Cancel" : "← Back"}
+        </Button>
+        <Button
+          data-id="editor-step-nav-next"
+          size="lg"
+          className="min-w-28 shadow-lg shadow-primary/30"
+          onClick={goNext}
+          disabled={!canAdvance}
+        >
+          {isLast ? "Save" : "Next"}
+        </Button>
+      </div>
 
       {initial && step === TOTAL_STEPS && (
         <div data-id="editor-destructive" className="mt-3 flex flex-wrap gap-3">
@@ -171,12 +206,14 @@ export function MantraEditor({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this {draft.kind}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Stops scheduled reminders for this {draft.kind}. If you're signed in, it will be
-              removed from your synced mantras as well.
+              Stops scheduled reminders for this {draft.kind}. If you're signed
+              in, it will be removed from your synced mantras as well.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel data-id="editor-delete-cancel">Cancel</AlertDialogCancel>
+            <AlertDialogCancel data-id="editor-delete-cancel">
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               data-id="editor-delete-confirm"
               onClick={() => {
@@ -208,11 +245,11 @@ function Step1({
       <Field id="kind" label="Type">
         <KindToggle value={draft.kind} onChange={(kind) => patch({ kind })} />
       </Field>
-      <Field id="mantra" label={isReminder ? 'Reminder' : 'Mantra'}>
+      <Field id="mantra" label={isReminder ? "Reminder" : "Mantra"}>
         <Textarea
           data-id="field-mantra-textarea"
-          rows={3}
-          maxLength={270}
+          rows={8}
+          maxLength={500}
           autoFocus
           placeholder={PLACEHOLDER[draft.kind]}
           value={draft.text}
@@ -244,7 +281,11 @@ function Step2({
           </SelectTrigger>
           <SelectContent>
             {FREQ_PRESETS.map((p) => (
-              <SelectItem key={p} value={String(p)} data-id={`field-frequency-option-${p}`}>
+              <SelectItem
+                key={p}
+                value={String(p)}
+                data-id={`field-frequency-option-${p}`}
+              >
                 {freqLabel(p)}
               </SelectItem>
             ))}
@@ -296,29 +337,41 @@ function Step3({
   const onceADay = draft.frequencyMinutes >= ONCE_A_DAY;
   return (
     <section data-id="editor-step-3" className="flex flex-col gap-5">
-      <Field id="hours" label={onceADay ? 'Time of day' : 'Active hours'}>
+      <Field id="hours" label={onceADay ? "Time of day" : "Active hours"}>
         {onceADay ? (
           <div className="flex flex-wrap items-center gap-3">
-            <span className="font-serif-zen italic text-muted-foreground">At</span>
+            <span className="font-serif-zen italic text-muted-foreground">
+              At
+            </span>
             <HourSelect
               data-id="field-hours-once"
               value={draft.activeHours.start}
-              onChange={(v) => patch({ activeHours: { start: v, end: Math.min(24, v + 1) } })}
+              onChange={(v) =>
+                patch({ activeHours: { start: v, end: Math.min(24, v + 1) } })
+              }
             />
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-3">
-            <span className="font-serif-zen italic text-muted-foreground">From</span>
+            <span className="font-serif-zen italic text-muted-foreground">
+              From
+            </span>
             <HourSelect
               data-id="field-hours-start"
               value={draft.activeHours.start}
-              onChange={(v) => patch({ activeHours: { ...draft.activeHours, start: v } })}
+              onChange={(v) =>
+                patch({ activeHours: { ...draft.activeHours, start: v } })
+              }
             />
-            <span className="font-serif-zen italic text-muted-foreground">to</span>
+            <span className="font-serif-zen italic text-muted-foreground">
+              to
+            </span>
             <HourSelect
               data-id="field-hours-end"
               value={draft.activeHours.end}
-              onChange={(v) => patch({ activeHours: { ...draft.activeHours, end: v } })}
+              onChange={(v) =>
+                patch({ activeHours: { ...draft.activeHours, end: v } })
+              }
             />
           </div>
         )}
@@ -333,11 +386,11 @@ function Step3({
                 key={label}
                 type="button"
                 data-id={`field-days-${label.toLowerCase()}`}
-                data-state={on ? 'on' : 'off'}
+                data-state={on ? "on" : "off"}
                 className={`cursor-pointer rounded-md border px-0 py-2.5 font-serif-zen text-[0.92rem] font-medium tracking-wider transition-colors ${
                   on
-                    ? 'border-primary bg-primary text-primary-foreground'
-                    : 'border-border bg-card text-muted-foreground hover:bg-muted'
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-muted-foreground hover:bg-muted"
                 }`}
                 onClick={() => {
                   const next = [...draft.activeDays];
@@ -377,11 +430,11 @@ function Field({
 function HourSelect({
   value,
   onChange,
-  'data-id': dataId,
+  "data-id": dataId,
 }: {
   value: number;
   onChange: (v: number) => void;
-  'data-id'?: string;
+  "data-id"?: string;
 }) {
   return (
     <Select value={String(value)} onValueChange={(v) => onChange(Number(v))}>
@@ -391,7 +444,7 @@ function HourSelect({
       <SelectContent>
         {Array.from({ length: 25 }, (_, i) => (
           <SelectItem key={i} value={String(i)}>
-            {String(i).padStart(2, '0')}:00
+            {String(i).padStart(2, "0")}:00
           </SelectItem>
         ))}
       </SelectContent>
@@ -422,7 +475,11 @@ function SoundControl({
         </SelectTrigger>
         <SelectContent>
           {SOUNDS.map((s) => (
-            <SelectItem key={s.id} value={s.id} data-id={`field-sound-option-${s.id}`}>
+            <SelectItem
+              key={s.id}
+              value={s.id}
+              data-id={`field-sound-option-${s.id}`}
+            >
               {s.label}
             </SelectItem>
           ))}

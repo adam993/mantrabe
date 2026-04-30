@@ -7,7 +7,7 @@ import {
   deleteRemote,
   syncWithRemote,
 } from '@/lib/storage';
-import { rescheduleAll } from '@/lib/notifications';
+import { rescheduleAll, subscribeNotificationLifecycle } from '@/lib/notifications';
 import { useAuth } from '@/lib/auth';
 import type { Mantra } from '@/types/mantra';
 
@@ -31,6 +31,15 @@ export function useMantras(): UseMantras {
 
   const userId = user?.id ?? null;
 
+  // Native scheduling pre-schedules only the *next* occurrence per mantra
+  // so a fresh fire replaces the previous tray entry. Lifecycle events —
+  // notification fired in foreground, user tapped, or app resumed —
+  // trigger a re-schedule using the freshest mantra list via this ref.
+  const mantrasRef = React.useRef<Mantra[]>([]);
+  React.useEffect(() => {
+    mantrasRef.current = mantras;
+  }, [mantras]);
+
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -44,6 +53,10 @@ export function useMantras(): UseMantras {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  React.useEffect(() => {
+    return subscribeNotificationLifecycle(() => mantrasRef.current);
   }, []);
 
   // When the user signs in (or changes), pull from remote and merge locally.

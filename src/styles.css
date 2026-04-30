@@ -179,7 +179,7 @@
     --grass-color: var(--text-muted); /* blade line color — pulls from theme */
     --grass-blade-w: 6px;             /* blade thickness */
     --grass-anim-duration: 20s;       /* sway period — bigger = slower */
-    --grass-strip-height: 300px;      /* visible grass area (above footer base) */
+    --grass-strip-height: 340px;      /* visible grass area (above footer base) */
     --grass-cluster-min: 150;         /* min cluster size in px (numeric) */
     --grass-cluster-max: 275;         /* max cluster size in px (numeric) */
     --grass-stride: 80;               /* avg px between cluster centers */
@@ -301,8 +301,36 @@
       border-top-left-radius: 21%;
     }
   }
+  /* Heavier-than-normal sway, fired by Grass.tsx every ~8s on a
+     per-cluster stagger so the gust ripples left-to-right like real
+     wind. transform-origin pinned to the cluster base so the rotation
+     hinges from the ground rather than the centre. */
+  @keyframes grass-gust {
+    0% {
+      transform: translate(-50%, 0) translate3d(0, 0, 0) rotate(0deg);
+    }
+    18% {
+      transform: translate(-50%, 0) translate3d(0, 0, 0) rotate(-3.5deg);
+    }
+    48% {
+      transform: translate(-50%, 0) translate3d(0, 0, 0) rotate(2deg);
+    }
+    78% {
+      transform: translate(-50%, 0) translate3d(0, 0, 0) rotate(-0.6deg);
+    }
+    100% {
+      transform: translate(-50%, 0) translate3d(0, 0, 0) rotate(0deg);
+    }
+  }
+  .grass-cluster.gust {
+    animation: grass-gust 1.6s ease-out;
+    transform-origin: 50% 100%;
+  }
   @media (prefers-reduced-motion: reduce) {
     .grass-blade {
+      animation: none;
+    }
+    .grass-cluster.gust {
       animation: none;
     }
   }

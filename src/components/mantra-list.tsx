@@ -1,7 +1,11 @@
 import * as React from "react";
-import { Plus } from "lucide-react";
+import { Bell, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import {
+  fireTestNotification,
+  requestPermission,
+} from "@/lib/notifications";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,7 +19,6 @@ import {
 import { describeMantra } from "@/lib/scheduler";
 import { Enso } from "@/components/enso";
 import { AccountMenu } from "@/components/account-menu";
-import { SignInPanel } from "@/components/sign-in-panel";
 import { VERSION } from "@/version";
 import type { Mantra } from "@/types/mantra";
 
@@ -28,9 +31,9 @@ interface Props {
   onToggle: (id: string, enabled: boolean) => void;
   onSyncNow: () => void;
   /**
-   * When false, hides the top logo bar and the inline "Sync across devices"
-   * panel. Used by the Android first-run flow so the empty state stays
-   * focused on getting the user's first mantra in.
+   * When false, hides the top logo bar (logo + Sign-in/Account menu).
+   * Used by the Android first-run flow so the empty state stays focused
+   * on getting the user's first mantra in.
    */
   chrome?: boolean;
 }
@@ -73,6 +76,7 @@ export function MantraList({
               v{VERSION}
             </span>
           </div>
+          <DebugTools mantras={mantras} />
           <AccountMenu syncing={syncing} onSyncNow={onSyncNow} />
         </header>
       )}
@@ -124,8 +128,6 @@ export function MantraList({
         </>
       )}
 
-      {chrome && <SignInPanel />}
-
       <AlertDialog
         open={confirmDelete !== null}
         onOpenChange={(open) => {
@@ -160,6 +162,32 @@ export function MantraList({
         </AlertDialogContent>
       </AlertDialog>
     </main>
+  );
+}
+
+// Renders nothing in production builds. Vite tree-shakes the body when
+// VITE_DEBUG_TOOLS is "false"/unset because the literal comparison
+// becomes a constant-false branch at build time.
+function DebugTools({ mantras }: { mantras: Mantra[] }) {
+  if (import.meta.env.VITE_DEBUG_TOOLS !== "true") return null;
+  return (
+    <Button
+      data-id="list-topbar-debug-fire"
+      variant="ghost"
+      size="sm"
+      title="Debug: fire a test notification now"
+      aria-label="Fire a test notification"
+      onClick={async () => {
+        const ok = await requestPermission();
+        if (!ok) return;
+        // Pick the first enabled mantra so the bell sound matches what the
+        // user actually configured; fall back to the generic test text.
+        const sample = mantras.find((m) => m.enabled && m.text.trim()) ?? null;
+        await fireTestNotification(sample);
+      }}
+    >
+      <Bell className="h-4 w-4" />
+    </Button>
   );
 }
 

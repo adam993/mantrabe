@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from "react";
 
 interface Cluster {
   /** Horizontal position as an absolute px offset within the strip. */
@@ -29,9 +29,9 @@ function readNum(el: HTMLElement, name: string, fallback: number): number {
 function makeClusters(strip: HTMLElement): Cluster[] {
   const stripWidth = strip.offsetWidth;
   if (stripWidth <= 0) return [];
-  const min = readNum(strip, '--grass-cluster-min', 150);
-  const max = readNum(strip, '--grass-cluster-max', 275);
-  const stride = readNum(strip, '--grass-stride', 80);
+  const min = readNum(strip, "--grass-cluster-min", 150);
+  const max = readNum(strip, "--grass-cluster-max", 275);
+  const stride = readNum(strip, "--grass-stride", 80);
   const range = Math.max(0, max - min);
 
   const out: Cluster[] = [];
@@ -71,12 +71,69 @@ export function Grass() {
     return () => ro.disconnect();
   }, []);
 
+  // Periodic gust: every ~8s (with jitter), apply the .gust class to
+  // each cluster on a left-to-right stagger so the heavier sway visibly
+  // ripples across the strip. We re-query the DOM each fire so the
+  // current cluster set is hit even after a resize-driven re-layout.
+  useEffect(() => {
+    const strip = stripRef.current;
+    if (!strip) return;
+    const reduced =
+      typeof window !== "undefined" &&
+      window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) return;
+
+    let nextId: ReturnType<typeof setTimeout> | null = null;
+    const perClusterTimeouts = new Set<ReturnType<typeof setTimeout>>();
+
+    const fireGust = () => {
+      const elements = Array.from(
+        strip.querySelectorAll<HTMLElement>(".grass-cluster"),
+      );
+      // Sort by left so the gust really does ripple left-to-right.
+      elements.sort(
+        (a, b) =>
+          parseFloat(a.style.left || "0") - parseFloat(b.style.left || "0"),
+      );
+      elements.forEach((el, i) => {
+        const start = setTimeout(() => {
+          el.classList.add("gust");
+          const stop = setTimeout(() => {
+            el.classList.remove("gust");
+            perClusterTimeouts.delete(stop);
+          }, 1700);
+          perClusterTimeouts.add(stop);
+          perClusterTimeouts.delete(start);
+        }, i * 70);
+        perClusterTimeouts.add(start);
+      });
+      // Schedule the next gust with ±25% jitter around 8s.
+      const next = 12000 + (Math.random() * 4000 - 2000);
+      nextId = setTimeout(fireGust, next);
+    };
+
+    // Hold the first gust off the initial paint so it doesn't fire on
+    // mount; lets the user notice the calm baseline first.
+    nextId = setTimeout(fireGust, 12000);
+
+    return () => {
+      if (nextId) clearTimeout(nextId);
+      for (const t of perClusterTimeouts) clearTimeout(t);
+      perClusterTimeouts.clear();
+    };
+  }, []);
+
+  // Pinned to the visual viewport (`fixed` instead of `absolute`) so the
+  // grass line doesn't ride up with the layout when the soft keyboard
+  // opens on Android. Decorative + pointer-events-none means overlapping
+  // scroll content isn't blocked.
   return (
     <div
       ref={stripRef}
       data-id="grass"
       aria-hidden="true"
-      className="grass-strip pointer-events-none absolute inset-x-0 bottom-0"
+      className="grass-strip pointer-events-none fixed inset-x-0 bottom-0"
     >
       {clusters.map((c, i) => (
         <div
