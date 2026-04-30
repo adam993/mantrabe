@@ -52,9 +52,6 @@ public class MantraAlarmReceiver extends BroadcastReceiver {
 
     private boolean isWithinActiveWindow(JSONObject mantra, long timeMs) throws JSONException {
         int activeDaysMask = mantra.getInt("activeDaysMask");
-        int activeHoursStart = mantra.getInt("activeHoursStart");
-        int activeHoursEnd = mantra.getInt("activeHoursEnd");
-        int frequencyMinutes = mantra.getInt("frequencyMinutes");
 
         Calendar c = Calendar.getInstance();
         c.setTimeInMillis(timeMs);
@@ -62,6 +59,26 @@ public class MantraAlarmReceiver extends BroadcastReceiver {
         if ((activeDaysMask & (1 << dow)) == 0) return false;
 
         int totalMin = c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE);
+
+        // Specific-times mode: accept if we're within ±5 min of any chosen
+        // hour. Doze-drift slack mirrors the frequency branch below.
+        if (mantra.has("specificTimes") && !mantra.isNull("specificTimes")) {
+            org.json.JSONArray arr = mantra.getJSONArray("specificTimes");
+            if (arr.length() > 0) {
+                for (int i = 0; i < arr.length(); i++) {
+                    int hour = arr.getInt(i);
+                    if (hour < 0 || hour > 23) continue;
+                    int target = hour * 60;
+                    if (totalMin >= target - 5 && totalMin < target + 5) return true;
+                }
+                return false;
+            }
+        }
+
+        int activeHoursStart = mantra.getInt("activeHoursStart");
+        int activeHoursEnd = mantra.getInt("activeHoursEnd");
+        int frequencyMinutes = mantra.getInt("frequencyMinutes");
+
         int startMin = activeHoursStart * 60;
         int endMin = frequencyMinutes >= MantraScheduler.ONCE_A_DAY
             ? startMin + 1

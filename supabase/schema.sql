@@ -12,11 +12,19 @@ create table if not exists public.mantras (
   active_hours_start int not null check (active_hours_start between 0 and 24),
   active_hours_end int not null check (active_hours_end between 0 and 24),
   active_days bool[] not null,
+  -- Hours (0–23) at which to fire on each active day, in "multiple times during a day"
+  -- mode. Empty array means the mantra uses frequency_minutes / activeHours instead.
+  -- Capped at 5 entries by the editor UI.
+  specific_times int[] not null default '{}',
   enabled bool not null default true,
   sound_id text not null default 'clear_bell',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Backfill for installs that ran the schema before this column existed.
+alter table public.mantras
+  add column if not exists specific_times int[] not null default '{}';
 
 create index if not exists mantras_user_id_idx on public.mantras (user_id);
 

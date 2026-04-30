@@ -113,17 +113,60 @@ public final class MantraScheduler {
 
     // ---- next-occurrence math --------------------------------------------
 
+    // Returns sorted, deduplicated, validated specificTimes hours, or an empty
+    // int[] if the field is missing/empty/all-invalid.
+    private static int[] parseSpecificTimes(JSONObject mantra) throws JSONException {
+        if (!mantra.has("specificTimes") || mantra.isNull("specificTimes")) return new int[0];
+        JSONArray arr = mantra.getJSONArray("specificTimes");
+        if (arr.length() == 0) return new int[0];
+        java.util.TreeSet<Integer> hours = new java.util.TreeSet<>();
+        for (int i = 0; i < arr.length(); i++) {
+            int h = arr.getInt(i);
+            if (h >= 0 && h <= 23) hours.add(h);
+        }
+        int[] out = new int[hours.size()];
+        int i = 0;
+        for (Integer h : hours) out[i++] = h;
+        return out;
+    }
+
     // Mirrors computeNextOccurrences in src/lib/scheduler.ts. Returns 0 if
     // no future occurrence exists within the next 60 days (e.g. all
     // active days disabled).
     public static long computeNextOccurrence(JSONObject mantra, long fromMs) throws JSONException {
+        int activeDaysMask = mantra.getInt("activeDaysMask");
+        if (activeDaysMask == 0) return 0;
+
+        int[] specificTimes = parseSpecificTimes(mantra);
+
+        Calendar dayStart = Calendar.getInstance();
+        dayStart.setTimeInMillis(fromMs);
+        dayStart.set(Calendar.HOUR_OF_DAY, 0);
+        dayStart.set(Calendar.MINUTE, 0);
+        dayStart.set(Calendar.SECOND, 0);
+        dayStart.set(Calendar.MILLISECOND, 0);
+
+        if (specificTimes.length > 0) {
+            for (int day = 0; day < 60; day++) {
+                int dow = (dayStart.get(Calendar.DAY_OF_WEEK) + 5) % 7;
+                if ((activeDaysMask & (1 << dow)) != 0) {
+                    for (int hour : specificTimes) {
+                        Calendar occ = (Calendar) dayStart.clone();
+                        occ.set(Calendar.HOUR_OF_DAY, hour);
+                        occ.set(Calendar.MINUTE, 0);
+                        long t = occ.getTimeInMillis();
+                        if (t > fromMs) return t;
+                    }
+                }
+                dayStart.add(Calendar.DAY_OF_MONTH, 1);
+            }
+            return 0;
+        }
+
         int frequencyMinutes = mantra.getInt("frequencyMinutes");
         int activeHoursStart = mantra.getInt("activeHoursStart");
         int activeHoursEnd = mantra.getInt("activeHoursEnd");
-        int activeDaysMask = mantra.getInt("activeDaysMask");
-
         if (frequencyMinutes <= 0) return 0;
-        if (activeDaysMask == 0) return 0;
 
         int startMin = activeHoursStart * 60;
         int endMin;
@@ -134,13 +177,6 @@ public final class MantraScheduler {
             endMin = activeHoursEnd * 60;
         }
         if (endMin <= startMin) return 0;
-
-        Calendar dayStart = Calendar.getInstance();
-        dayStart.setTimeInMillis(fromMs);
-        dayStart.set(Calendar.HOUR_OF_DAY, 0);
-        dayStart.set(Calendar.MINUTE, 0);
-        dayStart.set(Calendar.SECOND, 0);
-        dayStart.set(Calendar.MILLISECOND, 0);
 
         for (int day = 0; day < 60; day++) {
             // Calendar.DAY_OF_WEEK: SUN=1..SAT=7. We want MON=0..SUN=6.

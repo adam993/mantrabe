@@ -116,6 +116,7 @@ async function rescheduleAndroid(mantras: Mantra[]): Promise<void> {
     activeHoursStart: m.activeHours.start,
     activeHoursEnd: m.activeHours.end,
     activeDaysMask: activeDaysMask(m.activeDays),
+    specificTimes: m.specificTimes ?? [],
     soundId: m.soundId || null,
   }));
   await MantraScheduler.scheduleAll({ mantras: native });

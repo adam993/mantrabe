@@ -18,6 +18,10 @@ export interface NativeMantra {
   activeHoursEnd: number;
   // Mon=bit0 ... Sun=bit6. Matches src/lib/scheduler.ts day indexing.
   activeDaysMask: number;
+  // When non-empty, scheduling fires at exactly these hours (0–23) on each
+  // active day; frequencyMinutes / activeHours are ignored. Empty array =
+  // frequency / once-a-day mode.
+  specificTimes: number[];
   // Filename without extension (e.g. "clear_bell"); the plugin resolves
   // it as a raw resource. Null/empty → channel default sound.
   soundId: string | null;

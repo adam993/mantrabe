@@ -10,6 +10,10 @@ export interface Mantra {
   frequencyMinutes: number;
   activeHours: { start: number; end: number };
   activeDays: boolean[];
+  /** When non-empty, scheduling fires at exactly these hours (0–23) on each
+   *  active day, and `frequencyMinutes` / `activeHours` are ignored. Up to 5
+   *  entries — the "multiple times during a day" mode in the editor. */
+  specificTimes?: number[];
   enabled: boolean;
   soundId: string;
   createdAt: number;

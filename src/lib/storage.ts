@@ -48,6 +48,7 @@ export function makeMantra(input: Partial<Mantra> = {}): Mantra {
     frequencyMinutes: input.frequencyMinutes ?? 60,
     activeHours: input.activeHours || { start: 9, end: 21 },
     activeDays: input.activeDays || [true, true, true, true, true, false, false],
+    specificTimes: input.specificTimes,
     enabled: input.enabled ?? true,
     soundId: input.soundId || DEFAULT_SOUND_ID,
     createdAt: input.createdAt ?? Date.now(),
@@ -115,6 +116,7 @@ export async function setPermissionAsked(): Promise<void> {
 //     active_hours_start int not null,
 //     active_hours_end int not null,
 //     active_days bool[] not null,
+//     specific_times int[] not null default '{}',
 //     enabled bool not null,
 //     sound_id text not null,
 //     created_at timestamptz not null,
@@ -131,6 +133,8 @@ interface RemoteRow {
   active_hours_start: number;
   active_hours_end: number;
   active_days: boolean[];
+  /** Array of hours (0–23). Empty = mantra uses frequency / once-a-day mode. */
+  specific_times: number[];
   enabled: boolean;
   sound_id: string;
   created_at: string;
@@ -145,6 +149,10 @@ function rowToMantra(row: RemoteRow): Mantra {
     frequencyMinutes: row.frequency_minutes,
     activeHours: { start: row.active_hours_start, end: row.active_hours_end },
     activeDays: row.active_days,
+    specificTimes:
+      Array.isArray(row.specific_times) && row.specific_times.length > 0
+        ? row.specific_times
+        : undefined,
     enabled: row.enabled,
     soundId: row.sound_id,
     createdAt: new Date(row.created_at).getTime(),
@@ -163,6 +171,7 @@ function mantraToRow(m: Mantra, userId: string): RemoteRow {
     active_hours_start: m.activeHours.start,
     active_hours_end: m.activeHours.end,
     active_days: m.activeDays,
+    specific_times: m.specificTimes ?? [],
     enabled: m.enabled,
     sound_id: m.soundId,
     created_at: new Date(m.createdAt).toISOString(),
