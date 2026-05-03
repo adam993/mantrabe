@@ -45,6 +45,9 @@ src/version.ts
 .env
 .env.local
 
+# Superpowers brainstorm scratch (visual companion mockups)
+.superpowers/
+
 # Wireless ADB target used by `yarn build:android-adb`. Per-machine value.
 .adb-device
 
