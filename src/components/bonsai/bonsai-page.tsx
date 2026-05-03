@@ -2,18 +2,28 @@ import * as React from 'react';
 import { ArrowLeft } from 'lucide-react';
 import {
   DndContext,
+  DragOverlay,
   KeyboardSensor,
   PointerSensor,
   TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core';
 import { Button } from '@/components/ui/button';
 import { Bonsai } from './bonsai';
 import { BonsaiList } from './bonsai-list';
 import { MantraOverlay } from './mantra-overlay';
-import { slotDndId } from './leaf-slot';
+import {
+  CAP_HEIGHT,
+  LANTERN_HEIGHT,
+  LANTERN_WIDTH,
+  LanternBody,
+  TASSEL,
+  slotDndId,
+} from './leaf-slot';
+import { BONSAI_VIEWBOX, SLOT_POSITIONS } from './slots';
 import { useSlotMap, type SlotBinding } from '@/hooks/use-slot-map';
 import type { Mantra } from '@/types/mantra';
 
@@ -34,6 +44,16 @@ function dndIdToSlotIndex(id: unknown): number {
   return match ? Number(match[1]) : -1;
 }
 
+// Tight viewBox around a single lantern, centered on origin. Covers the
+// cap above and the tassel + bottom cap below, with a small margin so
+// the glow drop-shadow isn't clipped.
+const OVERLAY_MARGIN = 6;
+const OVERLAY_VB_HALF_W = LANTERN_WIDTH / 2 + OVERLAY_MARGIN;
+const OVERLAY_VB_TOP = -(LANTERN_HEIGHT / 2 + CAP_HEIGHT + OVERLAY_MARGIN);
+const OVERLAY_VB_HEIGHT =
+  LANTERN_HEIGHT + CAP_HEIGHT + 2.6 + TASSEL + OVERLAY_MARGIN * 2;
+const OVERLAY_VB_WIDTH = OVERLAY_VB_HALF_W * 2;
+
 export function BonsaiPage({
   mantras,
   onBack,
@@ -43,6 +63,25 @@ export function BonsaiPage({
   const slots = useSlotMap(mantras);
   const [activeSlot, setActiveSlot] = React.useState(-1);
   const [openMantra, setOpenMantra] = React.useState<Mantra | null>(null);
+  const [draggingId, setDraggingId] = React.useState<string | null>(null);
+  const stageRef = React.useRef<HTMLDivElement | null>(null);
+  const [stageWidth, setStageWidth] = React.useState(0);
+
+  // Track the rendered stage width so the DragOverlay can size its
+  // standalone lantern SVG to match the on-screen lantern size. The
+  // stage is `max-w-[440px]` and otherwise viewport-fluid; ResizeObserver
+  // catches both the initial measurement and any window resize.
+  React.useEffect(() => {
+    const node = stageRef.current;
+    if (!node) return;
+    setStageWidth(node.getBoundingClientRect().width);
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) setStageWidth(entry.contentRect.width);
+    });
+    ro.observe(node);
+    return () => ro.disconnect();
+  }, []);
 
   // Distance-activation only — a tap at rest never starts a drag, so
   // tap-to-open and drag-to-move never collide. ~6px matches the spec.
@@ -52,8 +91,17 @@ export function BonsaiPage({
     useSensor(KeyboardSensor),
   );
 
+  const handleDragStart = React.useCallback((event: DragStartEvent) => {
+    setDraggingId(String(event.active.id));
+  }, []);
+
+  const handleDragCancel = React.useCallback(() => {
+    setDraggingId(null);
+  }, []);
+
   const handleDragEnd = React.useCallback(
     (event: DragEndEvent) => {
+      setDraggingId(null);
       const { active, over } = event;
       if (!over) return;
       const srcIdx = dndIdToSlotIndex(active.id);
@@ -70,6 +118,13 @@ export function BonsaiPage({
     },
     [slots, onMoveMantras],
   );
+
+  const draggingIdx = draggingId ? dndIdToSlotIndex(draggingId) : -1;
+  const draggingMantra =
+    draggingIdx >= 0 ? slots[draggingIdx]?.mantra ?? null : null;
+  const stageScale = stageWidth > 0 ? stageWidth / BONSAI_VIEWBOX.width : 0;
+  const overlayWidthPx = OVERLAY_VB_WIDTH * stageScale;
+  const overlayHeightPx = OVERLAY_VB_HEIGHT * stageScale;
 
   const openSlot = React.useCallback(
     (slot: SlotBinding) => {
@@ -113,12 +168,43 @@ export function BonsaiPage({
         <span className="w-[68px]" aria-hidden="true" /> {/* spacer to balance back button */}
       </header>
 
-      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-        <Bonsai
-          slots={slots}
-          activeSlot={activeSlot}
-          onActivateSlot={handleLeafActivate}
-        />
+      <DndContext
+        sensors={sensors}
+        onDragStart={handleDragStart}
+        onDragCancel={handleDragCancel}
+        onDragEnd={handleDragEnd}
+      >
+        {/* Wrapper carries the same width cap as the bonsai stage so its
+         *  ResizeObserver reports the actual rendered stage width. The
+         *  inner Bonsai still has its own w-full + max-w-[440px], which
+         *  is harmless when the parent is already constrained. */}
+        <div ref={stageRef} className="mx-auto w-full max-w-[440px]">
+          <Bonsai
+            slots={slots}
+            activeSlot={activeSlot}
+            onActivateSlot={handleLeafActivate}
+          />
+        </div>
+        <DragOverlay dropAnimation={null}>
+          {draggingMantra && stageScale > 0 ? (
+            <svg
+              data-id="bonsai-drag-overlay"
+              viewBox={`${-OVERLAY_VB_HALF_W} ${OVERLAY_VB_TOP} ${OVERLAY_VB_WIDTH} ${OVERLAY_VB_HEIGHT}`}
+              width={overlayWidthPx}
+              height={overlayHeightPx}
+              xmlns="http://www.w3.org/2000/svg"
+              style={{ pointerEvents: 'none', overflow: 'visible' }}
+            >
+              <LanternBody
+                mantra={draggingMantra}
+                active={false}
+                cx={0}
+                cy={0}
+                idKey="overlay"
+              />
+            </svg>
+          ) : null}
+        </DragOverlay>
       </DndContext>
 
       <BonsaiList

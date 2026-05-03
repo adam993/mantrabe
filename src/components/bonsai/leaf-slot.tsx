@@ -21,10 +21,11 @@ export function slotDndId(index: number): string {
 // vertical pill — wider at the equator, narrower at top + bottom — to
 // read as a paper chochin. Top cap is a wooden ring; bottom dangles a
 // small tassel.
-const LANTERN_WIDTH = 32;
-const LANTERN_HEIGHT = 38;
-const CAP_HEIGHT = 5;
-const TASSEL = 6;
+export const LANTERN_WIDTH = 32;
+export const LANTERN_HEIGHT = 38;
+export const CAP_HEIGHT = 5;
+export const TASSEL = 6;
+const BOTTOM_CAP_HEIGHT = 2.6;
 
 /**
  * SVG path for a chochin lantern body, centered on origin. Tapered so
@@ -47,88 +48,45 @@ function lanternBodyPath(w: number, h: number): string {
 
 const LANTERN_BODY_D = lanternBodyPath(LANTERN_WIDTH, LANTERN_HEIGHT);
 
+interface LanternBodyProps {
+  mantra: Mantra | null;
+  active: boolean;
+  /** Center of the lantern body in the parent SVG's coordinate system. */
+  cx: number;
+  cy: number;
+  /** Suffix for gradient ids — must be unique per concurrent instance.
+   *  When the same lantern is shown in both LeafSlot and DragOverlay
+   *  at once, both must use distinct ids or fills cross-bind. */
+  idKey: string;
+}
+
 /**
- * One interactive paper lantern hanging from the bonsai.
+ * Pure visual: the lantern itself (cap, paper body, bands, bottom cap,
+ * tassel) and its radial-gradient defs. No thread, no hit target, no
+ * dnd-kit hooks — those live in LeafSlot. Reused by the DragOverlay so
+ * the dragged copy looks identical to the source.
  *
- *   - Mantra ⇒ warm matcha-gold lantern, lit (drop-shadow halo).
- *   - Reminder ⇒ sage-green lantern, lit.
- *   - Empty ⇒ outline-only at low opacity, no glow — a "spot waiting
- *     for a lantern."
- *   - Active ⇒ stronger pulsing glow.
- *
- * The thread above each lantern terminates in a tiny knot dot so it
- * reads as tied to a branch rather than floating in air. Thread
- * length is tuned per-slot in slots.ts.
- *
- * Colors go through inline style props (not the SVG fill attribute)
- * so CSS variables resolve in Safari/Android WebView, which don't
- * always honour `fill="var(--token)"`.
+ * Colors go through inline style props (not the SVG fill attribute) so
+ * CSS variables resolve in Safari / Android WebView, which don't always
+ * honour `fill="var(--token)"`.
  */
-export function LeafSlot({ index, mantra, active, onActivate }: LeafSlotProps) {
-  const pos = SLOT_POSITIONS[index];
-  if (!pos) throw new Error(`LeafSlot: invalid slot index ${index}`);
-
-  const dndId = slotDndId(index);
-  const {
-    attributes,
-    listeners,
-    setNodeRef: setDragRef,
-    transform,
-    isDragging,
-  } = useDraggable({ id: dndId, disabled: !mantra });
-  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: dndId });
-
-  const setNodeRef = React.useCallback(
-    (node: SVGGElement | null) => {
-      setDragRef(node as unknown as HTMLElement | null);
-      setDropRef(node as unknown as HTMLElement | null);
-    },
-    [setDragRef, setDropRef],
-  );
-
+export function LanternBody({ mantra, active, cx, cy, idKey }: LanternBodyProps) {
   const isReminder = mantra?.kind === 'reminder';
   const isBound = mantra !== null;
+  const lanternTopY = cy - LANTERN_HEIGHT / 2 - CAP_HEIGHT;
 
-  const ariaLabel = !mantra
-    ? `Empty lantern slot ${index + 1} — tap to add a mantra here`
-    : `${mantra.kind === 'reminder' ? 'Reminder' : 'Mantra'}: ${mantra.text || '(empty)'}`;
-
-  const handleKeyDown = (e: React.KeyboardEvent<SVGGElement>) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      onActivate(index);
-    }
-  };
-
-  const dragStyle: React.CSSProperties = transform
-    ? {
-        transform: `translate(${transform.x}px, ${transform.y}px)`,
-        zIndex: 50,
-        cursor: 'grabbing',
-      }
-    : {};
-
-  // Top of the lantern body in absolute coords; thread starts here and
-  // climbs `pos.thread` units up to the knot.
-  const lanternTopY = pos.y - LANTERN_HEIGHT / 2 - CAP_HEIGHT;
-  const knotY = lanternTopY - pos.thread;
-
-  // Color choices via inline style — safe across browsers.
   const bodyFillId = isBound
     ? isReminder
-      ? `lanternFillSage-${index}`
-      : `lanternFillGold-${index}`
+      ? `lanternFillSage-${idKey}`
+      : `lanternFillGold-${idKey}`
     : undefined;
 
-  // CSS classes that drive the drop-shadow glow. Empty slots get no
-  // glow at all so they recede from attention.
   let glowClass = '';
   if (isBound) {
     if (active) glowClass = 'lantern-active';
     else glowClass = isReminder ? 'lantern-lit-sage' : 'lantern-lit';
   }
 
-  // Visual variables for this lantern.
   const capStroke = 'var(--text)';
   const bandStroke = isBound
     ? isReminder
@@ -140,30 +98,10 @@ export function LeafSlot({ index, mantra, active, onActivate }: LeafSlotProps) {
       ? 'rgba(40, 60, 45, 0.65)'
       : 'rgba(80, 50, 20, 0.65)'
     : 'var(--text-muted)';
-  const threadStroke = isBound ? 'rgba(60, 45, 25, 0.55)' : 'var(--text-muted)';
 
   return (
-    <g
-      ref={setNodeRef}
-      style={dragStyle}
-      {...attributes}
-      {...listeners}
-      data-id={`bonsai-slot-${index}`}
-      data-bound={isBound}
-      data-kind={mantra?.kind ?? 'empty'}
-      data-active={active}
-      data-dragging={isDragging}
-      data-drop-target={isOver}
-      aria-label={ariaLabel}
-      onClick={() => {
-        if (isDragging) return;
-        onActivate(index);
-      }}
-      onKeyDown={handleKeyDown}
-      className="bonsai-slot outline-none focus-visible:[--slot-focus-opacity:0.6]"
-    >
-      {/* Per-lantern radial gradient: brighter center, warmer edge. */}
-      {isBound && (
+    <g className={glowClass}>
+      {isBound && bodyFillId && (
         <defs>
           {isReminder ? (
             <radialGradient id={bodyFillId} cx="50%" cy="40%" r="60%">
@@ -181,6 +119,162 @@ export function LeafSlot({ index, mantra, active, onActivate }: LeafSlotProps) {
         </defs>
       )}
 
+      <rect
+        x={cx - 5}
+        y={lanternTopY}
+        width={10}
+        height={CAP_HEIGHT}
+        rx={1}
+        ry={1}
+        style={{
+          fill: isBound ? 'var(--text)' : 'transparent',
+          stroke: capStroke,
+          strokeWidth: 1,
+          opacity: isBound ? 0.9 : 0.55,
+        }}
+      />
+
+      <path
+        d={LANTERN_BODY_D}
+        transform={`translate(${cx} ${cy})`}
+        style={{
+          fill: isBound && bodyFillId ? `url(#${bodyFillId})` : 'transparent',
+          stroke: bodyStroke,
+          strokeWidth: 1.2,
+          opacity: isBound ? 1 : 0.55,
+        }}
+      />
+
+      {isBound && (
+        <>
+          {[-LANTERN_HEIGHT * 0.25, 0, LANTERN_HEIGHT * 0.25].map((dy, i) => {
+            const halfW = LANTERN_WIDTH / 2;
+            const bandHalf = halfW * (1 - Math.abs(dy / LANTERN_HEIGHT) * 0.3);
+            return (
+              <line
+                key={i}
+                x1={cx - bandHalf}
+                y1={cy + dy}
+                x2={cx + bandHalf}
+                y2={cy + dy}
+                style={{ stroke: bandStroke, strokeWidth: 0.9 }}
+              />
+            );
+          })}
+        </>
+      )}
+
+      <rect
+        x={cx - 3.5}
+        y={cy + LANTERN_HEIGHT / 2}
+        width={7}
+        height={BOTTOM_CAP_HEIGHT}
+        rx={0.6}
+        ry={0.6}
+        style={{
+          fill: isBound ? 'var(--text)' : 'transparent',
+          stroke: capStroke,
+          strokeWidth: 0.9,
+          opacity: isBound ? 0.9 : 0.55,
+        }}
+      />
+
+      {isBound && (
+        <line
+          x1={cx}
+          y1={cy + LANTERN_HEIGHT / 2 + BOTTOM_CAP_HEIGHT}
+          x2={cx}
+          y2={cy + LANTERN_HEIGHT / 2 + BOTTOM_CAP_HEIGHT + TASSEL}
+          style={{ stroke: 'var(--text)', strokeWidth: 1, opacity: 0.85 }}
+        />
+      )}
+    </g>
+  );
+}
+
+/**
+ * One interactive paper lantern hanging from the bonsai. Combines a
+ * thread + knot + hit target with a `LanternBody` visual. Registers
+ * as both a draggable and a droppable so swaps work between any two
+ * slots regardless of whether the destination is occupied.
+ *
+ * Drag movement is rendered by the `DragOverlay` in BonsaiPage, not by
+ * applying the dnd-kit `transform` here. CSS transforms on SVG `<g>`
+ * elements force a full SVG repaint per pointer-move (no GPU layer in
+ * SVG-land), which is what was making the dragged lantern lag behind
+ * the cursor. The overlay lives in plain HTML and is composited by the
+ * GPU. While this slot is being dragged, we hide it via opacity so the
+ * overlay is the only visible copy.
+ *
+ * `touchAction: 'none'` is critical for Android: without it, WebView
+ * claims the touch for scroll before dnd-kit's 6 px activation
+ * distance is met, and the drag never starts.
+ */
+export function LeafSlot({ index, mantra, active, onActivate }: LeafSlotProps) {
+  const pos = SLOT_POSITIONS[index];
+  if (!pos) throw new Error(`LeafSlot: invalid slot index ${index}`);
+
+  const dndId = slotDndId(index);
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setDragRef,
+    isDragging,
+  } = useDraggable({ id: dndId, disabled: !mantra });
+  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: dndId });
+
+  const setNodeRef = React.useCallback(
+    (node: SVGGElement | null) => {
+      setDragRef(node as unknown as HTMLElement | null);
+      setDropRef(node as unknown as HTMLElement | null);
+    },
+    [setDragRef, setDropRef],
+  );
+
+  const isBound = mantra !== null;
+
+  const ariaLabel = !mantra
+    ? `Empty lantern slot ${index + 1} — tap to add a mantra here`
+    : `${mantra.kind === 'reminder' ? 'Reminder' : 'Mantra'}: ${mantra.text || '(empty)'}`;
+
+  const handleKeyDown = (e: React.KeyboardEvent<SVGGElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onActivate(index);
+    }
+  };
+
+  // Top of the lantern body; thread starts here and climbs `pos.thread` up.
+  const lanternTopY = pos.y - LANTERN_HEIGHT / 2 - CAP_HEIGHT;
+  const knotY = lanternTopY - pos.thread;
+
+  const threadStroke = isBound ? 'rgba(60, 45, 25, 0.55)' : 'var(--text-muted)';
+
+  const slotStyle: React.CSSProperties = {
+    touchAction: 'none',
+    ...(isDragging ? { opacity: 0 } : {}),
+  };
+
+  return (
+    <g
+      ref={setNodeRef}
+      style={slotStyle}
+      {...attributes}
+      {...listeners}
+      data-id={`bonsai-slot-${index}`}
+      data-bound={isBound}
+      data-kind={mantra?.kind ?? 'empty'}
+      data-active={active}
+      data-dragging={isDragging}
+      data-drop-target={isOver}
+      aria-label={ariaLabel}
+      onClick={() => {
+        if (isDragging) return;
+        onActivate(index);
+      }}
+      onKeyDown={handleKeyDown}
+      className="bonsai-slot outline-none focus-visible:[--slot-focus-opacity:0.6]"
+    >
       {/* Thread from the knot up to just above the lantern cap. */}
       <line
         x1={pos.x}
@@ -227,85 +321,7 @@ export function LeafSlot({ index, mantra, active, onActivate }: LeafSlotProps) {
         aria-hidden="true"
       />
 
-      {/* The lantern body group — what actually carries the glow. */}
-      <g className={glowClass}>
-        {/* Top wood cap — short rectangle. */}
-        <rect
-          x={pos.x - 5}
-          y={lanternTopY}
-          width={10}
-          height={CAP_HEIGHT}
-          rx={1}
-          ry={1}
-          style={{
-            fill: isBound ? 'var(--text)' : 'transparent',
-            stroke: capStroke,
-            strokeWidth: 1,
-            opacity: isBound ? 0.9 : 0.55,
-          }}
-        />
-
-        {/* Lantern body. Filled with a per-lantern radial gradient
-         *  when bound; outlined-only when empty. */}
-        <path
-          d={LANTERN_BODY_D}
-          transform={`translate(${pos.x} ${pos.y})`}
-          style={{
-            fill: isBound ? `url(#${bodyFillId})` : 'transparent',
-            stroke: bodyStroke,
-            strokeWidth: 1.2,
-            opacity: isBound ? 1 : 0.55,
-          }}
-        />
-
-        {/* Three banding lines across the body — paper segments. */}
-        {isBound && (
-          <>
-            {[-LANTERN_HEIGHT * 0.25, 0, LANTERN_HEIGHT * 0.25].map((dy, i) => {
-              const halfW = LANTERN_WIDTH / 2;
-              // Band shrinks at top/bottom of taper.
-              const bandHalf = halfW * (1 - Math.abs(dy / LANTERN_HEIGHT) * 0.3);
-              return (
-                <line
-                  key={i}
-                  x1={pos.x - bandHalf}
-                  y1={pos.y + dy}
-                  x2={pos.x + bandHalf}
-                  y2={pos.y + dy}
-                  style={{ stroke: bandStroke, strokeWidth: 0.9 }}
-                />
-              );
-            })}
-          </>
-        )}
-
-        {/* Bottom cap. */}
-        <rect
-          x={pos.x - 3.5}
-          y={pos.y + LANTERN_HEIGHT / 2}
-          width={7}
-          height={2.6}
-          rx={0.6}
-          ry={0.6}
-          style={{
-            fill: isBound ? 'var(--text)' : 'transparent',
-            stroke: capStroke,
-            strokeWidth: 0.9,
-            opacity: isBound ? 0.9 : 0.55,
-          }}
-        />
-
-        {/* Tassel hanging below the cap. */}
-        {isBound && (
-          <line
-            x1={pos.x}
-            y1={pos.y + LANTERN_HEIGHT / 2 + 2.6}
-            x2={pos.x}
-            y2={pos.y + LANTERN_HEIGHT / 2 + 2.6 + TASSEL}
-            style={{ stroke: 'var(--text)', strokeWidth: 1, opacity: 0.85 }}
-          />
-        )}
-      </g>
+      <LanternBody mantra={mantra} active={active} cx={pos.x} cy={pos.y} idKey={String(index)} />
 
       {/* Generous transparent hit target for fingertips. */}
       <rect
