@@ -54,6 +54,7 @@ export function makeMantra(input: Partial<Mantra> = {}): Mantra {
     createdAt: input.createdAt ?? Date.now(),
     updatedAt: Date.now(),
     remoteSyncedAt: input.remoteSyncedAt,
+    slotIndex: input.slotIndex,
   };
 }
 
@@ -139,6 +140,9 @@ interface RemoteRow {
   sound_id: string;
   created_at: string;
   updated_at: string;
+  /** Bonsai leaf slot (0–14). Null = no manual override; bonsai page sorts
+   *  by created_at. Older rows pre-date this column and arrive as null. */
+  slot_index: number | null;
 }
 
 function rowToMantra(row: RemoteRow): Mantra {
@@ -158,6 +162,12 @@ function rowToMantra(row: RemoteRow): Mantra {
     createdAt: new Date(row.created_at).getTime(),
     updatedAt: new Date(row.updated_at).getTime(),
     remoteSyncedAt: Date.now(),
+    slotIndex:
+      typeof row.slot_index === 'number' &&
+      row.slot_index >= 0 &&
+      row.slot_index <= 14
+        ? row.slot_index
+        : undefined,
   };
 }
 
@@ -176,6 +186,7 @@ function mantraToRow(m: Mantra, userId: string): RemoteRow {
     sound_id: m.soundId,
     created_at: new Date(m.createdAt).toISOString(),
     updated_at: new Date(m.updatedAt).toISOString(),
+    slot_index: typeof m.slotIndex === 'number' ? m.slotIndex : null,
   };
 }
 

@@ -20,4 +20,9 @@ export interface Mantra {
   updatedAt: number;
   /** Set when the row has been written to Supabase under the current user. */
   remoteSyncedAt?: number;
+  /** User-overridden bonsai leaf-slot index (0–14). Undefined ⇒ the bonsai
+   *  page falls back to createdAt-sorted ordering. Set when the user drags
+   *  a leaf to a new position; persisted locally and via Supabase. Values
+   *  outside [0..14] are treated as undefined defensively. */
+  slotIndex?: number;
 }

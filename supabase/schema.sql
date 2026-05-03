@@ -26,6 +26,13 @@ create table if not exists public.mantras (
 alter table public.mantras
   add column if not exists specific_times int[] not null default '{}';
 
+-- Bonsai leaf-slot override (0–14). NULL means "no override" — the bonsai
+-- page falls back to created_at-sorted ordering. Added when the Serenity
+-- Bonsai feature shipped; older rows backfill as NULL.
+alter table public.mantras
+  add column if not exists slot_index int
+    check (slot_index is null or (slot_index between 0 and 14));
+
 create index if not exists mantras_user_id_idx on public.mantras (user_id);
 
 alter table public.mantras enable row level security;
