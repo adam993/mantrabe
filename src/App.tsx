@@ -150,6 +150,12 @@ function Shell() {
           onAddToSlot={(slotIndex) =>
             setScreen({ name: 'edit', id: null, targetSlot: slotIndex })
           }
+          onMoveMantras={async (updates) => {
+            for (const u of updates) {
+              const target = mantras.find((m) => m.id === u.id);
+              if (target) await saveMantra({ ...target, slotIndex: u.slotIndex });
+            }
+          }}
         />
       )}
       <Footer />
