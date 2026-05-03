@@ -357,24 +357,64 @@
       }
     }
   }
-  /* Bonsai illustration host. The imported SVG is set as innerHTML; we
-   * size it to fill the wrapper width and let its viewBox handle the
-   * aspect ratio. The wrapper's own color drives currentColor inside
-   * the imported paths so the bonsai picks up the theme automatically. */
+  /* Bonsai illustration host. The SVG is set as innerHTML; its two
+   * paths use fill="currentColor" so the bonsai inherits whatever
+   * color we set on this wrapper. We use a bespoke --bonsai-ink token
+   * (rather than --text) so dark mode doesn't paint the tree pure
+   * cream — the user found that "too white." A soft drop-shadow
+   * gives the silhouette some atmospheric weight against the
+   * washi-paper background. */
   .bonsai-illustration {
-    line-height: 0; /* kill the inline-baseline gap below the svg */
+    --bonsai-ink: #2a241c; /* sumi ink, light mode */
+    color: var(--bonsai-ink);
+    line-height: 0;
   }
   .bonsai-illustration > svg {
     width: 100%;
     height: auto;
     display: block;
     overflow: visible;
+    filter: drop-shadow(0 6px 14px rgba(60, 40, 12, 0.22));
   }
+  @media (prefers-color-scheme: dark) {
+    .bonsai-illustration {
+      --bonsai-ink: #7a6447; /* warm bronze — silhouette without pure-white */
+    }
+    .bonsai-illustration > svg {
+      filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.5));
+    }
+  }
+
   .bonsai-overlay {
-    overflow: visible; /* don't clip the glow halo of edge-most stars */
+    overflow: visible; /* don't clip the lantern halos at edges */
     pointer-events: none;
   }
   .bonsai-overlay .bonsai-slot {
     pointer-events: auto;
+  }
+  /* CSS-driven glow around lit lanterns. SVG filter is heavier; this
+   * gives a soft golden bloom around the body group at almost no cost. */
+  .bonsai-overlay .lantern-lit {
+    filter: drop-shadow(0 0 6px rgba(176, 141, 87, 0.55));
+  }
+  .bonsai-overlay .lantern-lit-sage {
+    filter: drop-shadow(0 0 6px rgba(107, 142, 111, 0.55));
+  }
+  .bonsai-overlay .lantern-active {
+    filter: drop-shadow(0 0 12px rgba(212, 166, 97, 0.85));
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .bonsai-overlay .lantern-active {
+      animation: lantern-flicker 2.4s ease-in-out infinite;
+    }
+    @keyframes lantern-flicker {
+      0%,
+      100% {
+        filter: drop-shadow(0 0 9px rgba(212, 166, 97, 0.7));
+      }
+      50% {
+        filter: drop-shadow(0 0 16px rgba(212, 166, 97, 0.95));
+      }
+    }
   }
 }
