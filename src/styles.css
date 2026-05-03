@@ -357,8 +357,24 @@
       }
     }
   }
-  /* The bonsai itself fills width on small screens, capped on desktop. */
-  .bonsai-svg {
-    overflow: visible; /* don't clip glow halos at the viewBox edge */
+  /* Bonsai illustration host. The imported SVG is set as innerHTML; we
+   * size it to fill the wrapper width and let its viewBox handle the
+   * aspect ratio. The wrapper's own color drives currentColor inside
+   * the imported paths so the bonsai picks up the theme automatically. */
+  .bonsai-illustration {
+    line-height: 0; /* kill the inline-baseline gap below the svg */
+  }
+  .bonsai-illustration > svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    overflow: visible;
+  }
+  .bonsai-overlay {
+    overflow: visible; /* don't clip the glow halo of edge-most stars */
+    pointer-events: none;
+  }
+  .bonsai-overlay .bonsai-slot {
+    pointer-events: auto;
   }
 }

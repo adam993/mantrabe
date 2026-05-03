@@ -1,45 +1,49 @@
-// Hand-authored 15 leaf-slot positions on the bonsai SVG.
-//
-// Coordinates are in the bonsai's local viewBox (0..480 horizontal,
-// 0..380 vertical). Five slots per foliage cloud (crown / right-mid /
-// left-mid). Slot indices read roughly top-to-bottom, left-to-right so
-// a brand-new user (no slotIndex overrides yet) sees their first
-// mantra populate the most prominent crown slot.
+// 15 star-slot anchor positions on the user-supplied bonsai illustration
+// (assets/bonsai.svg, viewBox 0 0 717.328 827.305). Picked from the
+// densest path-coordinate regions so the stars visually "hang" from
+// crown foliage, side branches, and lower hanging twigs rather than
+// floating in empty sky. Slot indices read roughly top-to-bottom and
+// left-to-right.
+
+export const BONSAI_VIEWBOX = { width: 717.328, height: 827.305 };
 
 export interface SlotPosition {
-  /** X in the bonsai SVG viewBox (0..480). */
+  /** X in the bonsai illustration viewBox (0..717). */
   x: number;
-  /** Y in the bonsai SVG viewBox (0..380). */
+  /** Y in the bonsai illustration viewBox (0..827). */
   y: number;
-  /** Visual rotation of the leaf/berry in degrees. */
-  rotation: number;
-  /** Cloud the slot belongs to. Used for visual debug overlays only. */
-  region: 'crown' | 'right' | 'left';
+  /** Length of the thin "thread" line dangling from the branch above
+   *  the star. Visually anchors the star to a bonsai part. */
+  thread: number;
+  /** Region tag; debug-only metadata, no runtime behavior. */
+  region: 'crown-left' | 'crown-mid' | 'crown-right' | 'mid-left' | 'mid-right' | 'lower';
 }
 
 export const SLOT_COUNT = 15;
 
 export const SLOT_POSITIONS: SlotPosition[] = [
-  // Crown cloud (top, most prominent).
-  { x: 232, y: 74, rotation: -22, region: 'crown' },
-  { x: 248, y: 64, rotation: -6, region: 'crown' },
-  { x: 270, y: 62, rotation: 8, region: 'crown' },
-  { x: 288, y: 68, rotation: 20, region: 'crown' },
-  { x: 296, y: 84, rotation: -2, region: 'crown' },
+  // Crown — densest foliage area, ~y=80–230.
+  { x: 110, y: 130, thread: 16, region: 'crown-left' },
+  { x: 200, y: 100, thread: 18, region: 'crown-left' },
+  { x: 300, y: 110, thread: 14, region: 'crown-mid' },
+  { x: 420, y: 130, thread: 16, region: 'crown-right' },
+  { x: 530, y: 150, thread: 18, region: 'crown-right' },
 
-  // Right-mid cloud.
-  { x: 306, y: 194, rotation: -12, region: 'right' },
-  { x: 332, y: 190, rotation: 18, region: 'right' },
-  { x: 338, y: 206, rotation: -4, region: 'right' },
-  { x: 320, y: 200, rotation: 6, region: 'right' },
-  { x: 300, y: 204, rotation: 22, region: 'right' },
+  // Upper-mid — branches springing off the trunk, ~y=200–300.
+  { x: 90, y: 240, thread: 22, region: 'mid-left' },
+  { x: 250, y: 220, thread: 16, region: 'mid-left' },
+  { x: 440, y: 240, thread: 16, region: 'mid-right' },
+  { x: 600, y: 260, thread: 18, region: 'mid-right' },
 
-  // Left-mid cloud.
-  { x: 110, y: 170, rotation: -26, region: 'left' },
-  { x: 128, y: 166, rotation: 8, region: 'left' },
-  { x: 138, y: 180, rotation: 22, region: 'left' },
-  { x: 114, y: 182, rotation: -8, region: 'left' },
-  { x: 132, y: 156, rotation: 14, region: 'left' },
+  // Mid-low — dangling side twigs, ~y=380–450.
+  { x: 650, y: 390, thread: 22, region: 'mid-right' },
+  { x: 140, y: 430, thread: 22, region: 'mid-left' },
+  { x: 540, y: 410, thread: 22, region: 'mid-right' },
+
+  // Lower hanging branches near the pot lip, ~y=520–560.
+  { x: 220, y: 540, thread: 22, region: 'lower' },
+  { x: 380, y: 560, thread: 22, region: 'lower' },
+  { x: 500, y: 540, thread: 22, region: 'lower' },
 ];
 
 if (SLOT_POSITIONS.length !== SLOT_COUNT) {

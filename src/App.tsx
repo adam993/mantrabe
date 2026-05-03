@@ -19,6 +19,35 @@ type Screen =
   | { name: 'edit'; id: string | null; targetSlot?: number }
   | { name: 'bonsai' };
 
+// sessionStorage key holding the last screen the user was on. We persist
+// across reloads (so refreshing the bonsai page stays on the bonsai page)
+// but reset on a new session so a fresh launch always lands on the list.
+// 'intro' is excluded — it has its own first-run gate.
+const SCREEN_KEY = 'mantrabe.screen.v1';
+
+function readPersistedScreen(): Screen | null {
+  try {
+    const raw = sessionStorage.getItem(SCREEN_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Screen;
+    if (parsed.name === 'list' || parsed.name === 'bonsai' || parsed.name === 'edit') {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function persistScreen(screen: Screen): void {
+  if (screen.name === 'intro') return;
+  try {
+    sessionStorage.setItem(SCREEN_KEY, JSON.stringify(screen));
+  } catch {
+    // sessionStorage may fail in private mode; silently ignore.
+  }
+}
+
 function Shell() {
   const {
     mantras,
@@ -38,7 +67,16 @@ function Shell() {
   // whether we've already asked, so the shell renders nothing until the
   // initial decision lands.
   const [introResolved, setIntroResolved] = React.useState(!isAndroid);
-  const [screen, setScreen] = React.useState<Screen>({ name: 'list' });
+  const [screen, setScreen] = React.useState<Screen>(
+    () => readPersistedScreen() ?? { name: 'list' },
+  );
+
+  // Mirror screen changes into sessionStorage so a page reload stays
+  // where the user was (e.g. on the bonsai). Skipped for 'intro' which
+  // is gated by its own first-run logic.
+  React.useEffect(() => {
+    persistScreen(screen);
+  }, [screen]);
 
   React.useEffect(() => {
     if (!isAndroid) return;
