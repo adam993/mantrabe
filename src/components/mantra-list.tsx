@@ -19,6 +19,7 @@ import {
 import { describeMantra } from "@/lib/scheduler";
 import { Enso } from "@/components/enso";
 import { AccountMenu } from "@/components/account-menu";
+import { BonsaiButton } from "@/components/bonsai/bonsai-button";
 import { VERSION } from "@/version";
 import type { Mantra } from "@/types/mantra";
 
@@ -30,6 +31,7 @@ interface Props {
   onDelete: (id: string) => void;
   onToggle: (id: string, enabled: boolean) => void;
   onSyncNow: () => void;
+  onOpenBonsai: () => void;
   /**
    * When false, hides the top logo bar (logo + Sign-in/Account menu).
    * Used by the Android first-run flow so the empty state stays focused
@@ -46,6 +48,7 @@ export function MantraList({
   onDelete,
   onToggle,
   onSyncNow,
+  onOpenBonsai,
   chrome = true,
 }: Props) {
   const [confirmDelete, setConfirmDelete] = React.useState<string | null>(null);
@@ -125,6 +128,7 @@ export function MantraList({
               <Plus className="h-5 w-5" />
             </Button>
           </ul>
+          <BonsaiButton onClick={onOpenBonsai} />
         </>
       )}
 

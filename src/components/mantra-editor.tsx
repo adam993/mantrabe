@@ -32,6 +32,10 @@ import type { EntryKind, Mantra } from "@/types/mantra";
 
 interface Props {
   initial: Mantra | null;
+  /** When set on a "new mantra" flow, the saved mantra claims this bonsai
+   *  leaf slot (0–14). Used by the "tap an empty leaf" flow on the bonsai
+   *  page. Ignored when editing an existing mantra. */
+  targetSlot?: number;
   onCancel: () => void;
   onSave: (mantra: Mantra) => Promise<void> | void;
   onDelete: (id: string) => Promise<void> | void;
@@ -82,13 +86,14 @@ function nextDefaultHour(taken: number[]): number {
 
 export function MantraEditor({
   initial,
+  targetSlot,
   onCancel,
   onSave,
   onDelete,
   onPermissionGate,
 }: Props) {
   const [draft, setDraft] = React.useState<Mantra>(
-    () => initial ?? makeMantra({}),
+    () => initial ?? makeMantra({ slotIndex: targetSlot }),
   );
   const [step, setStep] = React.useState<Step>(1);
   const [confirmDelete, setConfirmDelete] = React.useState(false);

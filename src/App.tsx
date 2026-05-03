@@ -8,11 +8,16 @@ import { MantraEditor } from '@/components/mantra-editor';
 import { NotificationsIntro } from '@/components/notifications-intro';
 import { Footer } from '@/components/footer';
 import { SyncErrorToast } from '@/components/sync-error-toast';
+import { BonsaiPage } from '@/components/bonsai/bonsai-page';
 import { isAndroid as detectAndroid } from '@/lib/platform';
 import { getPermissionAsked, setPermissionAsked } from '@/lib/storage';
 import type { Mantra } from '@/types/mantra';
 
-type Screen = { name: 'intro' } | { name: 'list' } | { name: 'edit'; id: string | null };
+type Screen =
+  | { name: 'intro' }
+  | { name: 'list' }
+  | { name: 'edit'; id: string | null; targetSlot?: number }
+  | { name: 'bonsai' };
 
 function Shell() {
   const {
@@ -109,7 +114,7 @@ function Shell() {
         <PermissionBanner permission={permission} onEnable={() => void request()} />
       )}
       <SyncErrorToast error={syncError} />
-      {screen.name === 'list' ? (
+      {screen.name === 'list' && (
         <MantraList
           mantras={mantras}
           syncing={syncing}
@@ -119,10 +124,13 @@ function Shell() {
           onDelete={(id) => removeMantra(id)}
           onToggle={(id, enabled) => toggleEnabled(id, enabled)}
           onSyncNow={syncNow}
+          onOpenBonsai={() => setScreen({ name: 'bonsai' })}
         />
-      ) : (
+      )}
+      {screen.name === 'edit' && (
         <MantraEditor
           initial={editing}
+          targetSlot={screen.targetSlot}
           onCancel={() => setScreen({ name: 'list' })}
           onSave={async (m) => {
             await saveMantra(m);
@@ -133,6 +141,15 @@ function Shell() {
             setScreen({ name: 'list' });
           }}
           onPermissionGate={ensure}
+        />
+      )}
+      {screen.name === 'bonsai' && (
+        <BonsaiPage
+          mantras={mantras}
+          onBack={() => setScreen({ name: 'list' })}
+          onAddToSlot={(slotIndex) =>
+            setScreen({ name: 'edit', id: null, targetSlot: slotIndex })
+          }
         />
       )}
       <Footer />

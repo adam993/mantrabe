@@ -334,4 +334,31 @@
       animation: none;
     }
   }
+
+  /* Bonsai active-leaf glow.
+   * The bonsai itself is intentionally still — only the active-leaf glow
+   * pulses, and only outside of reduced-motion. Under reduced-motion we
+   * render the halo at steady max alpha. */
+  @media (prefers-reduced-motion: no-preference) {
+    .bonsai-slot__glow {
+      transform-origin: center;
+      transform-box: fill-box;
+      animation: bonsai-glow-pulse 2.6s ease-in-out infinite;
+    }
+    @keyframes bonsai-glow-pulse {
+      0%,
+      100% {
+        opacity: 0.7;
+        transform: scale(0.92);
+      }
+      50% {
+        opacity: 1;
+        transform: scale(1.08);
+      }
+    }
+  }
+  /* The bonsai itself fills width on small screens, capped on desktop. */
+  .bonsai-svg {
+    overflow: visible; /* don't clip glow halos at the viewBox edge */
+  }
 }
