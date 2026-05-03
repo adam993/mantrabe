@@ -53,3 +53,21 @@ create policy "mantras: update own" on public.mantras
 drop policy if exists "mantras: delete own" on public.mantras;
 create policy "mantras: delete own" on public.mantras
   for delete using (auth.uid() = user_id);
+
+-- Realtime: include this table in the supabase_realtime publication so
+-- the JS client can subscribe to postgres_changes (INSERT/UPDATE/DELETE)
+-- scoped to the signed-in user. Idempotent — adding twice errors, so we
+-- only add when not already a member.
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'mantras'
+  ) then
+    alter publication supabase_realtime add table public.mantras;
+  end if;
+end
+$$;

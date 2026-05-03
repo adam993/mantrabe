@@ -90,6 +90,35 @@ export async function upsertLocal(
   return { saved, list };
 }
 
+/** Stamp the `remoteSyncedAt` flag on a local row without touching
+ *  `updatedAt`. Bumping `updatedAt` here would make the row look newer
+ *  than its just-pushed remote twin and force a redundant re-push on the
+ *  next sync. */
+export async function markLocalSynced(id: string, syncedAt: number): Promise<Mantra[]> {
+  const list = await loadLocalMantras();
+  const idx = list.findIndex((m) => m.id === id);
+  const current = list[idx];
+  if (!current) return list;
+  list[idx] = { ...current, remoteSyncedAt: syncedAt };
+  await saveLocalMantras(list);
+  return list;
+}
+
+/** Insert/update locally without re-stamping `updatedAt`. Used when a row
+ *  arrives from Supabase Realtime — the remote `updated_at` is already
+ *  authoritative. Skips the write entirely when our local copy is the
+ *  same age or newer, which suppresses echo from our own pushes. */
+export async function applyRemoteUpsert(mantra: Mantra): Promise<Mantra[]> {
+  const list = await loadLocalMantras();
+  const idx = list.findIndex((m) => m.id === mantra.id);
+  const existing = idx >= 0 ? list[idx] : undefined;
+  if (existing && existing.updatedAt >= mantra.updatedAt) return list;
+  if (existing) list[idx] = mantra;
+  else list.push(mantra);
+  await saveLocalMantras(list);
+  return list;
+}
+
 /** Returns the new list so callers don't have to re-read storage. */
 export async function deleteLocal(id: string): Promise<Mantra[]> {
   const list = await loadLocalMantras();
@@ -125,7 +154,7 @@ export async function setPermissionAsked(): Promise<void> {
 //   );
 // RLS: user can read/write only rows where user_id = auth.uid().
 
-interface RemoteRow {
+export interface RemoteRow {
   id: string;
   user_id: string;
   kind: EntryKind;
@@ -145,7 +174,7 @@ interface RemoteRow {
   slot_index: number | null;
 }
 
-function rowToMantra(row: RemoteRow): Mantra {
+export function rowToMantra(row: RemoteRow): Mantra {
   return {
     id: row.id,
     kind: row.kind || 'mantra',
@@ -200,10 +229,14 @@ export async function pullRemote(userId: string): Promise<Mantra[]> {
   return (data as RemoteRow[]).map(rowToMantra);
 }
 
-export async function pushRemote(mantra: Mantra, userId: string): Promise<void> {
-  if (!supabase) return;
+/** Push a mantra to Supabase. Returns the local-form mantra with
+ *  `remoteSyncedAt` stamped so the caller can persist that flag — required
+ *  for tombstone-style delete propagation in `syncWithRemote`. */
+export async function pushRemote(mantra: Mantra, userId: string): Promise<Mantra> {
+  if (!supabase) return mantra;
   const { error } = await supabase.from('mantras').upsert(mantraToRow(mantra, userId));
   if (error) throw error;
+  return { ...mantra, remoteSyncedAt: Date.now() };
 }
 
 export async function deleteRemote(id: string): Promise<void> {
@@ -213,36 +246,60 @@ export async function deleteRemote(id: string): Promise<void> {
 }
 
 /**
- * Last-write-wins merge of local and remote mantras.
+ * Last-write-wins merge of local and remote mantras, with delete
+ * propagation via the `remoteSyncedAt` tombstone flag.
  *
- * - For each id present in both: keep the one with the larger `updatedAt`.
- * - Rows only in remote → adopt locally (user signed in on a new device).
- * - Rows only in local → push to remote (offline edits, first sync).
+ * - Row present in both: keep the one with the larger `updatedAt`.
+ * - Row only in remote: adopt locally (user signed in on a new device).
+ * - Row only in local AND `remoteSyncedAt` is set: it was previously
+ *   mirrored to remote and is now gone → it was deleted on another
+ *   device. Drop it locally instead of resurrecting it.
+ * - Row only in local AND `remoteSyncedAt` is unset: never pushed yet
+ *   (offline edit, fresh sign-in) → keep and push to remote.
  *
- * Returns the merged set so the caller can persist it locally and refresh state.
+ * After successful pushes, `remoteSyncedAt` is stamped on the pushed
+ * rows and persisted locally so a future sync can correctly tell the
+ * difference between "deleted remotely" and "never synced."
  */
 export async function syncWithRemote(userId: string): Promise<Mantra[]> {
   if (!supabase) return loadLocalMantras();
 
   const [local, remote] = await Promise.all([loadLocalMantras(), pullRemote(userId)]);
+  const remoteById = new Map(remote.map((r) => [r.id, r]));
 
-  const byId = new Map<string, Mantra>();
-  for (const m of local) byId.set(m.id, m);
-  for (const r of remote) {
-    const existing = byId.get(r.id);
-    if (!existing || r.updatedAt > existing.updatedAt) byId.set(r.id, r);
+  const merged: Mantra[] = [];
+  const toPush: Mantra[] = [];
+
+  for (const m of local) {
+    const r = remoteById.get(m.id);
+    if (r) {
+      // Both have it — newer wins.
+      merged.push(m.updatedAt > r.updatedAt ? m : r);
+    } else if (m.remoteSyncedAt) {
+      // Was mirrored before, now gone from remote → tombstone, drop it.
+      continue;
+    } else {
+      // Local-only, never pushed → keep and queue for push.
+      merged.push(m);
+      toPush.push(m);
+    }
+  }
+  // Pull-only rows (in remote, not in local) → adopt.
+  const localIds = new Set(local.map((m) => m.id));
+  for (const r of remote) if (!localIds.has(r.id)) merged.push(r);
+
+  // Push first so the post-push stamp is reflected in saved state.
+  if (toPush.length > 0) {
+    const pushed = await Promise.all(toPush.map((m) => pushRemote(m, userId)));
+    const pushedById = new Map(pushed.map((p) => [p.id, p]));
+    for (let i = 0; i < merged.length; i++) {
+      const row = merged[i];
+      if (!row) continue;
+      const stamped = pushedById.get(row.id);
+      if (stamped) merged[i] = stamped;
+    }
   }
 
-  const merged = Array.from(byId.values());
   await saveLocalMantras(merged);
-
-  // Push any local rows that are newer than (or absent from) remote.
-  const remoteById = new Map(remote.map((r) => [r.id, r]));
-  const toPush = merged.filter((m) => {
-    const r = remoteById.get(m.id);
-    return !r || m.updatedAt > r.updatedAt;
-  });
-  await Promise.all(toPush.map((m) => pushRemote(m, userId)));
-
   return merged;
 }
