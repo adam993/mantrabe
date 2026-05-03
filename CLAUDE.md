@@ -30,4 +30,14 @@ Auth should be possible by sign up with google / github / email
 
 Read supabase docs and do it in a scalable and clean way.
 
+## Task 3:
+
+Using superpowers plugin, let's plan a "Serenity tree", which will be a beautiful, serene tree perhaps made in CSS or as a SVG. You will be responsible for the design (Claude has design usage, use that and let's see how it goes). But before using Claude design, let's brainstorm together - ask me questions and subquestions about anything unclear (and many things are unclear, this is a very short prompt.)
+
+-Serenity tree will display fruits. Each fruit is a mantra or a reminder.  
+ Maybe this analogy (tree and fruits) isn't that perfect, maybe some other symbol other  
+ than a tree is better. Think about it and push back if needed.
+
+In any case, X will display mantras in a visualized way. The goal is to visualize important things in life, and in that way improve users' life.
+
 Think deeply about these and complete them. You're awesome for doing this, thanks!
