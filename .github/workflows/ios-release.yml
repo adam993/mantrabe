@@ -1,0 +1,155 @@
+name: Build iOS IPA (unsigned, AltStore)
+
+# Builds an UNSIGNED .ipa on a hosted macOS runner and publishes it +
+# an AltStore source JSON to the rolling GitHub Release tagged
+# `ios-latest`. Two Netlify redirects (see netlify.toml) point stable
+# in-domain URLs at those release assets:
+#
+#   https://mantrabe.netlify.app/altstore-source.json  ← what users add to AltStore
+#   https://mantrabe.netlify.app/mantrabe-ios.ipa      ← raw IPA for direct sideload
+#
+# Why unsigned: AltStore Classic resigns IPAs on the user's device with
+# their free Apple ID, so we don't need (or want) a paid Apple Developer
+# cert in CI. The 7-day refresh dance is an Apple constraint on free certs;
+# AltStore handles it via AltServer over local Wi-Fi.
+#
+# Triggers (opt-in only — most pushes don't need a fresh IPA):
+#   1. workflow_dispatch — click "Run workflow" in the Actions tab.
+#   2. Pushing a commit to master whose message includes `[ios]`.
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ios-release
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-14
+    # Push to master only triggers a build when the commit message opts in
+    # with `[ios]`. workflow_dispatch always runs.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.head_commit.message, '[ios]')
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Build unsigned IPA
+        # build-ios.sh --ci does: yarn build (with VITE_* baked in via env),
+        # cap add ios (first run), copy wavs, cap sync, stamp Info.plist with
+        # version.json values, pod install, xcodebuild archive (no signing),
+        # and zip the .app into Payload/ as a real .ipa.
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: bash scripts/build-ios.sh --ci
+
+      - name: Read version + IPA metadata
+        id: meta
+        run: |
+          set -euo pipefail
+          VERSION=$(node scripts/version.cjs show | awk '{print $1}')
+          # Mirror the macOS branch of build-ios.sh so the source JSON's
+          # buildVersion exactly matches CFBundleVersion in Info.plist.
+          BUILD=$(node -e "const v=require('./version.json');process.stdout.write(String(v.major*10000+v.minor*100+v.build))")
+          IPA="release/mantrabe-ios-latest.ipa"
+          if [ ! -f "$IPA" ]; then
+            echo "::error::expected $IPA after build-ios.sh --ci" >&2
+            exit 1
+          fi
+          # macOS stat — `-f%z` returns size in bytes.
+          SIZE=$(stat -f%z "$IPA")
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          {
+            echo "version=$VERSION"
+            echo "build=$BUILD"
+            echo "size=$SIZE"
+            echo "date=$DATE"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Generate AltStore source JSON
+        # Hand-rolled rather than templated because there's only one app and
+        # one rolling version slot — no need for a generator. Schema follows
+        # https://faq.altstore.io/developers/make-a-source.
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          BUILD: ${{ steps.meta.outputs.build }}
+          SIZE: ${{ steps.meta.outputs.size }}
+          DATE: ${{ steps.meta.outputs.date }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          cat > release/altstore-source.json <<EOF
+          {
+            "name": "Mantrabe",
+            "subtitle": "A serene mantra reminder",
+            "description": "Mantrabe — a cross-platform mantra reminder. Works offline; optional cloud sync.",
+            "iconURL": "https://mantrabe.netlify.app/icon-enso.png",
+            "headerURL": "https://mantrabe.netlify.app/icon-enso.png",
+            "website": "https://mantrabe.netlify.app/",
+            "tintColor": "B08D57",
+            "apps": [
+              {
+                "name": "Mantrabe",
+                "bundleIdentifier": "com.mantrabe.app",
+                "developerName": "Adam Radivojevic",
+                "subtitle": "A serene mantra reminder",
+                "localizedDescription": "Mantrabe is a serene cross-platform mantra reminder. Works offline; optional cloud sync. Visualizes your mantras as fruits on a serenity tree so the things that matter stay in view.",
+                "iconURL": "https://mantrabe.netlify.app/icon-enso.png",
+                "tintColor": "B08D57",
+                "category": "lifestyle",
+                "screenshots": [],
+                "versions": [
+                  {
+                    "version": "${VERSION}",
+                    "buildVersion": "${BUILD}",
+                    "date": "${DATE}",
+                    "size": ${SIZE},
+                    "downloadURL": "https://github.com/adam993/mantrabe/releases/download/ios-latest/mantrabe-ios-latest.ipa",
+                    "localizedDescription": "Mantrabe v${VERSION} — built from ${SHA::7}."
+                  }
+                ],
+                "appPermissions": {
+                  "entitlements": [],
+                  "privacy": {}
+                }
+              }
+            ],
+            "news": []
+          }
+          EOF
+          # Quick syntax check so a bad heredoc doesn't ship a broken source.
+          python3 -c "import json,sys;json.load(open('release/altstore-source.json'))"
+
+      - name: Publish IPA + source JSON to rolling release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          set -euo pipefail
+          TAG=ios-latest
+          NOTES="Mantrabe v${VERSION} (unsigned IPA for AltStore) — built from ${GITHUB_SHA::7} on $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" \
+              --title "Latest iOS IPA (unsigned, AltStore)" \
+              --notes "$NOTES" \
+              --prerelease
+          gh release upload "$TAG" release/mantrabe-ios-latest.ipa --clobber
+          gh release upload "$TAG" release/altstore-source.json --clobber
+          gh release edit "$TAG" --notes "$NOTES"

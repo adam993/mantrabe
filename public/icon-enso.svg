@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Mantrabe">
+  <rect width="100" height="100" fill="#F5EFE0"/>
+  <circle
+    cx="50" cy="50" r="38"
+    fill="none" stroke="#B08D57" stroke-width="4"
+    stroke-linecap="round"
+    stroke-dasharray="230 28" stroke-dashoffset="-6"
+    transform="rotate(-22 50 50)"
+    opacity="0.85"
+  />
+</svg>

@@ -35,3 +35,23 @@
   to = "https://github.com/adam993/mantrabe/releases/download/android-latest/mantrabe-android-latest.apk"
   status = 302
   force = true
+
+# iOS distribution via AltStore. The workflow at .github/workflows/ios-
+# release.yml publishes an unsigned .ipa + an AltStore source JSON to the
+# rolling `ios-latest` GitHub Release. These two redirects expose stable
+# in-domain URLs so users can paste a clean address into AltStore and so
+# the source JSON's downloadURL doesn't have to change between builds.
+#
+# `force = true` is important: without it Netlify would 404 here (no
+# matching file in dist/) before consulting the redirect table.
+[[redirects]]
+  from = "/altstore-source.json"
+  to = "https://github.com/adam993/mantrabe/releases/download/ios-latest/altstore-source.json"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/mantrabe-ios.ipa"
+  to = "https://github.com/adam993/mantrabe/releases/download/ios-latest/mantrabe-ios-latest.ipa"
+  status = 302
+  force = true
