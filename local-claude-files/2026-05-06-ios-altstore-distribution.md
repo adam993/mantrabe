@@ -34,8 +34,7 @@ git push origin master  (with [ios] in commit message)
         │       ├─ copy public/*.wav  (notification sounds)
         │       ├─ cap sync ios
         │       ├─ stamp Info.plist with version.json values
-        │       ├─ pod install
-        │       ├─ xcodebuild archive (CODE_SIGNING_ALLOWED=NO)
+        │       ├─ xcodebuild archive (SPM-based, CODE_SIGNING_ALLOWED=NO)
         │       └─ zip App.app into Payload/  →  release/mantrabe-ios-latest.ipa
         │   generate release/altstore-source.json
         │   gh release upload ios-latest …
@@ -127,10 +126,15 @@ refuses to install:
   `@capacitor/ios` version in package.json against current CocoaPods
   spec mirrors.
 - **`xcodebuild archive` fails with code-signing errors despite
-  `CODE_SIGNING_ALLOWED=NO`**: a new Pod has overridden the flag. Try
-  adding to the xcodebuild command:
+  `CODE_SIGNING_ALLOWED=NO`**: a new SPM dependency has overridden the
+  flag. Try adding to the xcodebuild command:
   `OTHER_CODE_SIGN_FLAGS="" CODE_SIGN_ENTITLEMENTS=""` and inspect the
   failing target.
+- **`No 'Podfile' found`**: you're on a code path that still expects
+  CocoaPods. Capacitor 8 uses SPM exclusively for iOS plugins — there
+  is no Podfile, no `pod install`, no `.xcworkspace` at the top level.
+  The build uses `-project ios/App/App.xcodeproj` and SPM deps live in
+  `ios/App/CapApp-SPM/Package.swift`.
 - **AltStore says "permissions mismatch"**: a plugin added a usage
   string to `Info.plist` but the source JSON wasn't updated. Add the
   entry under `appPermissions.privacy` in `ios-release.yml`.

@@ -82,20 +82,25 @@ if [ "$MODE" != "--ci" ]; then
 fi
 
 # --ci: produce an unsigned .ipa suitable for AltStore.
-echo "==> Installing CocoaPods dependencies"
-( cd ios/App && pod install --repo-update )
+# Capacitor 8 dropped CocoaPods in favor of Swift Package Manager — the
+# scaffold is `ios/App/App.xcodeproj` (no top-level .xcworkspace) and plugin
+# deps live in `ios/App/CapApp-SPM/Package.swift`, rewritten by `cap sync`.
+# xcodebuild resolves the SPM graph automatically on the archive call.
 
 echo "==> Archiving (unsigned)"
 rm -rf build/ios
 mkdir -p build/ios
 # CODE_SIGNING_ALLOWED=NO disables signing for the App target *and* propagates
-# to every Pod target, which is what we want — AltStore will resign on device.
+# to every SPM dependency target — exactly what we want, since AltStore will
+# resign on device. -clonedSourcePackagesDirPath keeps Swift package checkout
+# inside the workspace so a stat'd cache survives between CI runs if cached.
 xcodebuild \
-  -workspace ios/App/App.xcworkspace \
+  -project ios/App/App.xcodeproj \
   -scheme App \
   -configuration Release \
   -destination 'generic/platform=iOS' \
   -archivePath build/ios/App.xcarchive \
+  -clonedSourcePackagesDirPath build/ios/SourcePackages \
   archive \
   CODE_SIGNING_ALLOWED=NO \
   CODE_SIGNING_REQUIRED=NO \
