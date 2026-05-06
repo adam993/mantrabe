@@ -9,6 +9,10 @@ interface LeafSlotProps {
   mantra: Mantra | null;
   active: boolean;
   onActivate: (index: number) => void;
+  /** True while *any* lantern in the bonsai is being dragged. Drives the
+   *  always-on drop halos so the user can see every receptacle even when
+   *  their finger covers the lantern they're holding. */
+  isDragActive: boolean;
 }
 
 /** dnd-kit ID convention: every slot is registered as a draggable
@@ -192,25 +196,75 @@ export function LanternBody({ mantra, active, cx, cy, idKey }: LanternBodyProps)
   );
 }
 
+// Tight bounding box around the dnd-kit handle (focus ring + hit target)
+// in viewBox units, expressed as deltas from the lantern center
+// (pos.x, pos.y). dnd-kit reads `getBoundingClientRect()` of the
+// draggable to size + position the DragOverlay wrapper; the
+// LanternBody is rendered as a *sibling* (not a child) of the handle
+// so its CSS `drop-shadow` glow filter — which can inflate the bbox by
+// up to ~16 px on every side via `.lantern-active` — never leaks into
+// the handle's measured rect. With the handle filter-free, its bbox
+// matches the overlay viewBox below pixel-for-pixel and the dragged
+// lantern stays anchored under the cursor.
+export const LANTERN_HIT_HALF_W = LANTERN_WIDTH / 2 + 8;
+export const LANTERN_HIT_TOP = -(LANTERN_HEIGHT / 2 + 8);
+export const LANTERN_HIT_BOTTOM = LANTERN_HEIGHT / 2 + BOTTOM_CAP_HEIGHT + TASSEL;
+export const LANTERN_HIT_HEIGHT = LANTERN_HIT_BOTTOM - LANTERN_HIT_TOP;
+
+// Drop-target halo radius, in viewBox units. Larger than the lantern
+// so finger-covered slots still show a clear "drop here" affordance.
+const DROP_HALO_RADIUS = LANTERN_HEIGHT * 1.05;
+
 /**
- * One interactive paper lantern hanging from the bonsai. Combines a
- * thread + knot + hit target with a `LanternBody` visual. Registers
- * as both a draggable and a droppable so swaps work between any two
- * slots regardless of whether the destination is occupied.
+ * One interactive paper lantern hanging from the bonsai.
  *
- * Drag movement is rendered by the `DragOverlay` in BonsaiPage, not by
- * applying the dnd-kit `transform` here. CSS transforms on SVG `<g>`
- * elements force a full SVG repaint per pointer-move (no GPU layer in
- * SVG-land), which is what was making the dragged lantern lag behind
- * the cursor. The overlay lives in plain HTML and is composited by the
- * GPU. While this slot is being dragged, we hide it via opacity so the
- * overlay is the only visible copy.
+ * Layout — three sibling SVG groups under the slot:
  *
- * `touchAction: 'none'` is critical for Android: without it, WebView
- * claims the touch for scroll before dnd-kit's 6 px activation
- * distance is met, and the drag never starts.
+ *  1. Decoration (no dnd) — thread + knot. Stays put through a drag so
+ *     the source position keeps a visible "where it came from" trail.
+ *
+ *  2. Lantern visual (no dnd, pointer-events:none) — `<LanternBody>` plus
+ *     its CSS drop-shadow glow. Kept *out* of the dnd-kit handle so the
+ *     filter region (which can inflate `getBoundingClientRect()` by up
+ *     to ~16 px under `.lantern-active`) never leaks into the rect that
+ *     dnd-kit uses to position the DragOverlay. Hidden via opacity 0
+ *     while this slot is the active drag source, since the overlay is
+ *     drawing the lantern instead.
+ *
+ *  3. Handle (draggable + droppable, dnd-kit) — focus ring + transparent
+ *     hit-target rect. No filters, fixed-geometry children only, so its
+ *     bbox is exactly `LANTERN_HIT_HALF_W * 2 × LANTERN_HIT_HEIGHT` in
+ *     viewBox units. The `DragOverlay` SVG in BonsaiPage uses a viewBox
+ *     of those same dimensions, with the lantern at (0, 0) — so the
+ *     dragged copy lines up under the cursor pixel-for-pixel. Painted
+ *     last, so taps land on the hit-target rather than the lantern body
+ *     above it (the body is pointer-events:none anyway).
+ *
+ * Drag movement is rendered by the `DragOverlay`, not by applying the
+ * dnd-kit `transform` here. CSS transforms on SVG `<g>` elements force
+ * a full SVG repaint per pointer-move (no GPU layer in SVG-land), which
+ * was making the dragged lantern lag behind the cursor. The overlay
+ * lives in plain HTML and is composited by the GPU.
+ *
+ * Drop-target halo: while *any* slot is being dragged, every other slot
+ * shows a visible halo (dashed when idle, solid + filled when hovered).
+ * On touch the user's finger covers the lantern they're holding, so
+ * without these halos there's no visual cue for where a drop will
+ * actually land. The source slot suppresses its own halo to avoid
+ * cluttering the empty thread-and-knot ghost.
+ *
+ * `touchAction: 'none'` (inline + a redundant CSS rule on `.bonsai-slot`)
+ * is critical for Android: without it, WebView claims the touch for
+ * scroll before dnd-kit's 6 px activation distance is met, and the drag
+ * never starts.
  */
-export function LeafSlot({ index, mantra, active, onActivate }: LeafSlotProps) {
+export function LeafSlot({
+  index,
+  mantra,
+  active,
+  onActivate,
+  isDragActive,
+}: LeafSlotProps) {
   const pos = SLOT_POSITIONS[index];
   if (!pos) throw new Error(`LeafSlot: invalid slot index ${index}`);
 
@@ -244,38 +298,20 @@ export function LeafSlot({ index, mantra, active, onActivate }: LeafSlotProps) {
     }
   };
 
-  // Top of the lantern body; thread starts here and climbs `pos.thread` up.
   const lanternTopY = pos.y - LANTERN_HEIGHT / 2 - CAP_HEIGHT;
   const knotY = lanternTopY - pos.thread;
-
   const threadStroke = isBound ? 'rgba(60, 45, 25, 0.55)' : 'var(--text-muted)';
 
-  const slotStyle: React.CSSProperties = {
-    touchAction: 'none',
-    ...(isDragging ? { opacity: 0 } : {}),
-  };
+  // Show the drop halo on every slot while a drag is in progress, except
+  // the source slot itself (avoid clutter on the empty thread-and-knot
+  // ghost). On touch devices the user's finger covers the lantern they're
+  // holding; the halos make destination slots unambiguous.
+  const showDropHalo = isDragActive && !isDragging;
 
   return (
-    <g
-      ref={setNodeRef}
-      style={slotStyle}
-      {...attributes}
-      {...listeners}
-      data-id={`bonsai-slot-${index}`}
-      data-bound={isBound}
-      data-kind={mantra?.kind ?? 'empty'}
-      data-active={active}
-      data-dragging={isDragging}
-      data-drop-target={isOver}
-      aria-label={ariaLabel}
-      onClick={() => {
-        if (isDragging) return;
-        onActivate(index);
-      }}
-      onKeyDown={handleKeyDown}
-      className="bonsai-slot outline-none focus-visible:[--slot-focus-opacity:0.6]"
-    >
-      {/* Thread from the knot up to just above the lantern cap. */}
+    <g data-id={`bonsai-slot-${index}`}>
+      {/* Decoration — never draggable. Stays visible even mid-drag so
+       *  the thread reads as a "where it came from" trail. */}
       <line
         x1={pos.x}
         y1={knotY + 1}
@@ -284,8 +320,6 @@ export function LeafSlot({ index, mantra, active, onActivate }: LeafSlotProps) {
         style={{ stroke: threadStroke, strokeWidth: 1.2 }}
         aria-hidden="true"
       />
-
-      {/* Knot — small dark dot at the top of the thread, "tied" to a branch. */}
       <circle
         cx={pos.x}
         cy={knotY}
@@ -294,44 +328,96 @@ export function LeafSlot({ index, mantra, active, onActivate }: LeafSlotProps) {
         aria-hidden="true"
       />
 
-      {/* Drop-target ring while another lantern is dragged over. */}
-      {isOver && !isDragging && (
+      {/* Drop-target halo. Painted before the lantern so the lantern
+       *  sits visually on top of its own halo when not hovered, and so
+       *  the hovered-state fill tints behind the lantern. */}
+      {showDropHalo && (
         <circle
           cx={pos.x}
           cy={pos.y}
-          r={LANTERN_HEIGHT * 0.7}
-          fill="none"
-          style={{ stroke: 'var(--primary)', strokeOpacity: 0.6, strokeWidth: 1.6 }}
+          r={DROP_HALO_RADIUS}
+          style={{
+            fill: 'var(--primary)',
+            fillOpacity: isOver ? 0.18 : 0,
+            stroke: 'var(--primary)',
+            strokeWidth: isOver ? 2.4 : 1.4,
+            strokeOpacity: isOver ? 0.9 : 0.45,
+          }}
+          strokeDasharray={isOver ? undefined : '4 4'}
           aria-hidden="true"
         />
       )}
 
-      {/* Focus ring for keyboard nav. */}
-      <rect
-        x={pos.x - LANTERN_WIDTH / 2 - 4}
-        y={pos.y - LANTERN_HEIGHT / 2 - 4}
-        width={LANTERN_WIDTH + 8}
-        height={LANTERN_HEIGHT + 8}
-        rx={LANTERN_WIDTH / 2 + 4}
-        ry={LANTERN_HEIGHT / 2 + 4}
-        fill="none"
-        stroke="var(--ring)"
-        strokeWidth={1.6}
-        style={{ strokeOpacity: 'var(--slot-focus-opacity, 0)' }}
-        aria-hidden="true"
-      />
+      {/* Lantern visual + glow filter. Sibling of the dnd-kit handle so
+       *  its drop-shadow region never inflates the handle's bbox.
+       *  pointer-events:none so the hit-target rect on top still wins
+       *  pointer events. Hidden via opacity 0 while this slot is the
+       *  active drag source — the DragOverlay is rendering the lantern. */}
+      <g
+        style={{
+          pointerEvents: 'none',
+          ...(isDragging ? { opacity: 0 } : {}),
+        }}
+      >
+        <LanternBody
+          mantra={mantra}
+          active={active}
+          cx={pos.x}
+          cy={pos.y}
+          idKey={String(index)}
+        />
+      </g>
 
-      <LanternBody mantra={mantra} active={active} cx={pos.x} cy={pos.y} idKey={String(index)} />
+      {/* Draggable + droppable handle. Children: focus ring + transparent
+       *  hit-target rect only — no filters anywhere in this subtree, so
+       *  the handle's screen-space bbox is exactly
+       *  (LANTERN_HIT_HALF_W * 2) × LANTERN_HIT_HEIGHT in viewBox units,
+       *  matching the DragOverlay viewBox pixel-for-pixel. */}
+      <g
+        ref={setNodeRef}
+        style={{ touchAction: 'none' }}
+        {...attributes}
+        {...listeners}
+        data-id={`bonsai-slot-${index}-handle`}
+        data-bound={isBound}
+        data-kind={mantra?.kind ?? 'empty'}
+        data-active={active}
+        data-dragging={isDragging}
+        data-drop-target={isOver}
+        aria-label={ariaLabel}
+        onClick={() => {
+          if (isDragging) return;
+          onActivate(index);
+        }}
+        onKeyDown={handleKeyDown}
+        className="bonsai-slot outline-none focus-visible:[--slot-focus-opacity:0.6]"
+      >
+        <rect
+          x={pos.x - LANTERN_WIDTH / 2 - 4}
+          y={pos.y - LANTERN_HEIGHT / 2 - 4}
+          width={LANTERN_WIDTH + 8}
+          height={LANTERN_HEIGHT + 8}
+          rx={LANTERN_WIDTH / 2 + 4}
+          ry={LANTERN_HEIGHT / 2 + 4}
+          fill="none"
+          stroke="var(--ring)"
+          strokeWidth={1.6}
+          style={{ strokeOpacity: 'var(--slot-focus-opacity, 0)' }}
+          aria-hidden="true"
+        />
 
-      {/* Generous transparent hit target for fingertips. */}
-      <rect
-        x={pos.x - LANTERN_WIDTH / 2 - 8}
-        y={pos.y - LANTERN_HEIGHT / 2 - 8}
-        width={LANTERN_WIDTH + 16}
-        height={LANTERN_HEIGHT + 16}
-        fill="transparent"
-        aria-hidden="true"
-      />
+        {/* Generous transparent hit target for fingertips — also pins
+         *  the upper edge of the bounding rect at LANTERN_HIT_TOP so
+         *  the DragOverlay viewBox stays in lockstep. */}
+        <rect
+          x={pos.x - LANTERN_HIT_HALF_W}
+          y={pos.y + LANTERN_HIT_TOP}
+          width={LANTERN_HIT_HALF_W * 2}
+          height={LANTERN_HIT_HEIGHT}
+          fill="transparent"
+          aria-hidden="true"
+        />
+      </g>
     </g>
   );
 }

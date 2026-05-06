@@ -1,4 +1,5 @@
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { ArrowLeft } from "lucide-react";
 import {
   DndContext,
@@ -16,14 +17,13 @@ import { Bonsai } from "./bonsai";
 import { BonsaiList } from "./bonsai-list";
 import { MantraOverlay } from "./mantra-overlay";
 import {
-  CAP_HEIGHT,
-  LANTERN_HEIGHT,
-  LANTERN_WIDTH,
+  LANTERN_HIT_HALF_W,
+  LANTERN_HIT_HEIGHT,
+  LANTERN_HIT_TOP,
   LanternBody,
-  TASSEL,
   slotDndId,
 } from "./leaf-slot";
-import { BONSAI_VIEWBOX, SLOT_POSITIONS } from "./slots";
+import { BONSAI_VIEWBOX } from "./slots";
 import { useSlotMap, type SlotBinding } from "@/hooks/use-slot-map";
 import type { Mantra } from "@/types/mantra";
 
@@ -46,14 +46,18 @@ function dndIdToSlotIndex(id: unknown): number {
   return match ? Number(match[1]) : -1;
 }
 
-// Tight viewBox around a single lantern, centered on origin. Covers the
-// cap above and the tassel + bottom cap below, with a small margin so
-// the glow drop-shadow isn't clipped.
-const OVERLAY_MARGIN = 6;
-const OVERLAY_VB_HALF_W = LANTERN_WIDTH / 2 + OVERLAY_MARGIN;
-const OVERLAY_VB_TOP = -(LANTERN_HEIGHT / 2 + CAP_HEIGHT + OVERLAY_MARGIN);
-const OVERLAY_VB_HEIGHT =
-  LANTERN_HEIGHT + CAP_HEIGHT + 2.6 + TASSEL + OVERLAY_MARGIN * 2;
+// The DragOverlay's viewBox is locked to the LeafSlot's draggable
+// handle bounding box (focus ring + lantern body + hit target), so the
+// dragged lantern lines up pixel-for-pixel with where the user grabbed
+// it. dnd-kit positions the overlay at the source's
+// getBoundingClientRect; if the overlay's internal lantern is offset
+// from the SVG top-left differently than in the source, the lantern
+// teleports on drag start. Using the same rect on both sides removes
+// the offset entirely. The overlay SVG sets `overflow: visible` so the
+// CSS glow drop-shadow can extend past these tight bounds.
+const OVERLAY_VB_HALF_W = LANTERN_HIT_HALF_W;
+const OVERLAY_VB_TOP = LANTERN_HIT_TOP;
+const OVERLAY_VB_HEIGHT = LANTERN_HIT_HEIGHT;
 const OVERLAY_VB_WIDTH = OVERLAY_VB_HALF_W * 2;
 
 export function BonsaiPage({
@@ -184,28 +188,56 @@ export function BonsaiPage({
             slots={slots}
             activeSlot={activeSlot}
             onActivateSlot={handleLeafActivate}
+            isDragActive={draggingId !== null}
           />
         </div>
-        <DragOverlay dropAnimation={null}>
-          {draggingMantra && stageScale > 0 ? (
-            <svg
-              data-id="bonsai-drag-overlay"
-              viewBox={`${-OVERLAY_VB_HALF_W} ${OVERLAY_VB_TOP} ${OVERLAY_VB_WIDTH} ${OVERLAY_VB_HEIGHT}`}
-              width={overlayWidthPx}
-              height={overlayHeightPx}
-              xmlns="http://www.w3.org/2000/svg"
-              style={{ pointerEvents: "none", overflow: "visible" }}
-            >
-              <LanternBody
-                mantra={draggingMantra}
-                active={false}
-                cx={0}
-                cy={0}
-                idKey="overlay"
-              />
-            </svg>
-          ) : null}
-        </DragOverlay>
+        {/* DragOverlay must be portalled to <body>: dnd-kit positions the
+         *  overlay wrapper with `position: fixed; top: rect.top; left:
+         *  rect.left`, where rect is the source's viewport-relative
+         *  `getBoundingClientRect()`. If any ancestor of the overlay has
+         *  a non-`none` `transform` (or `filter`, `perspective`, or
+         *  `will-change`), CSS makes that ancestor the containing block
+         *  for fixed descendants — and the overlay interprets those
+         *  viewport coords relative to the ancestor instead, teleporting
+         *  the lantern by the ancestor's offset. `<main>` here carries
+         *  `.screen-fade`, whose animation leaves a `transform:
+         *  translateY(0)` on the element via `animation-fill-mode:
+         *  both`. Portalling the overlay out to <body> escapes that
+         *  containing block while still letting the JSX consume the
+         *  surrounding DndContext (React context flows through portals). */}
+        {typeof document !== "undefined" &&
+          createPortal(
+            <DragOverlay dropAnimation={null}>
+              {draggingMantra && stageScale > 0 ? (
+                <svg
+                  data-id="bonsai-drag-overlay"
+                  viewBox={`${-OVERLAY_VB_HALF_W} ${OVERLAY_VB_TOP} ${OVERLAY_VB_WIDTH} ${OVERLAY_VB_HEIGHT}`}
+                  width={overlayWidthPx}
+                  height={overlayHeightPx}
+                  xmlns="http://www.w3.org/2000/svg"
+                  // `display: block` keeps the SVG pinned to its
+                  // wrapper's top-left. As an inline replaced element,
+                  // an SVG sits on the parent's text baseline and would
+                  // lift ~line-height above the dnd-kit wrapper top,
+                  // re-introducing a vertical teleport.
+                  style={{
+                    display: "block",
+                    pointerEvents: "none",
+                    overflow: "visible",
+                  }}
+                >
+                  <LanternBody
+                    mantra={draggingMantra}
+                    active={false}
+                    cx={0}
+                    cy={0}
+                    idKey="overlay"
+                  />
+                </svg>
+              ) : null}
+            </DragOverlay>,
+            document.body,
+          )}
       </DndContext>
 
       <BonsaiList

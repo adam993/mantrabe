@@ -19,5 +19,11 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    // Don't watch node_modules — chokidar otherwise tries to register
+    // an inotify watch per file there and blows past the system file-
+    // watcher limit (ENOSPC) before the dev server can finish booting.
+    watch: {
+      ignored: ['**/node_modules/**'],
+    },
   },
 });

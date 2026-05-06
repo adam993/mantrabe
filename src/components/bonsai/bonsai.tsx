@@ -10,6 +10,9 @@ interface BonsaiProps {
   /** Slot index whose star should glow. -1 means none. */
   activeSlot: number;
   onActivateSlot: (index: number, mantra: Mantra | null) => void;
+  /** True while any lantern is mid-drag. Forwarded to LeafSlot so each
+   *  slot can show its drop-target halo for the duration of the drag. */
+  isDragActive: boolean;
 }
 
 /**
@@ -30,7 +33,12 @@ interface BonsaiProps {
  * The illustration is decorative — all interactivity (click, drag,
  * keyboard, screen-reader buttons) lives in the overlay layer.
  */
-export function Bonsai({ slots, activeSlot, onActivateSlot }: BonsaiProps) {
+export function Bonsai({
+  slots,
+  activeSlot,
+  onActivateSlot,
+  isDragActive,
+}: BonsaiProps) {
   const counts = React.useMemo(() => {
     let mantras = 0;
     let reminders = 0;
@@ -79,6 +87,7 @@ export function Bonsai({ slots, activeSlot, onActivateSlot }: BonsaiProps) {
             mantra={slot.mantra}
             active={slot.index === activeSlot}
             onActivate={(idx) => onActivateSlot(idx, slot.mantra)}
+            isDragActive={isDragActive}
           />
         ))}
       </svg>

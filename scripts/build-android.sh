@@ -55,6 +55,18 @@ yarn cap sync android
 echo "==> Applying Mantrabe-specific Android overrides"
 node scripts/apply-android-customizations.cjs
 
+# Re-sync the version into android/app/build.gradle. The earlier `yarn
+# build` step also runs `version.cjs sync`, but on a clean checkout
+# (e.g. CI) android/ doesn't exist yet at that point — so the gradle
+# file is skipped, then `cap add android` scaffolds it with
+# Capacitor's defaults (versionCode 1, versionName "1.0"). Without
+# this second sync, every CI APK ships with versionCode 1, and
+# installing a newer build over an older one fails on some devices
+# with "App not installed as package appears to be invalid" (Samsung's
+# wording for an effectively-same-or-lower versionCode collision).
+echo "==> Re-syncing version into android/app/build.gradle"
+node scripts/version.cjs sync
+
 echo "==> Building APK (debug)"
 ( cd android && ./gradlew assembleDebug )
 

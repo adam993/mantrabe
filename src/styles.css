@@ -388,9 +388,16 @@
   .bonsai-overlay {
     overflow: visible; /* don't clip the lantern halos at edges */
     pointer-events: none;
+    /* Belt-and-suspenders for Android WebView: a few WebView builds
+     * don't reliably honor an inline `touch-action` on a nested SVG
+     * <g>, so we declare it on the root SVG too. Without this the
+     * WebView claims touchmove for scroll before dnd-kit's 6 px
+     * activation distance is met and drag never starts. */
+    touch-action: none;
   }
   .bonsai-overlay .bonsai-slot {
     pointer-events: auto;
+    touch-action: none;
   }
   /* CSS-driven glow around lit lanterns. SVG filter is heavier; this
    * gives a soft golden bloom around the body group at almost no cost. */
