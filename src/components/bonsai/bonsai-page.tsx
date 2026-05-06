@@ -1,5 +1,5 @@
-import * as React from 'react';
-import { ArrowLeft } from 'lucide-react';
+import * as React from "react";
+import { ArrowLeft } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -10,11 +10,11 @@ import {
   useSensors,
   type DragEndEvent,
   type DragStartEvent,
-} from '@dnd-kit/core';
-import { Button } from '@/components/ui/button';
-import { Bonsai } from './bonsai';
-import { BonsaiList } from './bonsai-list';
-import { MantraOverlay } from './mantra-overlay';
+} from "@dnd-kit/core";
+import { Button } from "@/components/ui/button";
+import { Bonsai } from "./bonsai";
+import { BonsaiList } from "./bonsai-list";
+import { MantraOverlay } from "./mantra-overlay";
 import {
   CAP_HEIGHT,
   LANTERN_HEIGHT,
@@ -22,10 +22,10 @@ import {
   LanternBody,
   TASSEL,
   slotDndId,
-} from './leaf-slot';
-import { BONSAI_VIEWBOX, SLOT_POSITIONS } from './slots';
-import { useSlotMap, type SlotBinding } from '@/hooks/use-slot-map';
-import type { Mantra } from '@/types/mantra';
+} from "./leaf-slot";
+import { BONSAI_VIEWBOX, SLOT_POSITIONS } from "./slots";
+import { useSlotMap, type SlotBinding } from "@/hooks/use-slot-map";
+import type { Mantra } from "@/types/mantra";
 
 interface BonsaiPageProps {
   mantras: Mantra[];
@@ -35,11 +35,13 @@ interface BonsaiPageProps {
   /** Persist a batch of {mantra, newSlotIndex} updates from a swap or
    *  move. The page calls this with one update for a move-to-empty and
    *  two updates for a swap. */
-  onMoveMantras: (updates: Array<{ id: string; slotIndex: number }>) => Promise<void>;
+  onMoveMantras: (
+    updates: Array<{ id: string; slotIndex: number }>,
+  ) => Promise<void>;
 }
 
 function dndIdToSlotIndex(id: unknown): number {
-  if (typeof id !== 'string') return -1;
+  if (typeof id !== "string") return -1;
   const match = /^bonsai-slot-(\d+)$/.exec(id);
   return match ? Number(match[1]) : -1;
 }
@@ -121,7 +123,7 @@ export function BonsaiPage({
 
   const draggingIdx = draggingId ? dndIdToSlotIndex(draggingId) : -1;
   const draggingMantra =
-    draggingIdx >= 0 ? slots[draggingIdx]?.mantra ?? null : null;
+    draggingIdx >= 0 ? (slots[draggingIdx]?.mantra ?? null) : null;
   const stageScale = stageWidth > 0 ? stageWidth / BONSAI_VIEWBOX.width : 0;
   const overlayWidthPx = OVERLAY_VB_WIDTH * stageScale;
   const overlayHeightPx = OVERLAY_VB_HEIGHT * stageScale;
@@ -150,22 +152,21 @@ export function BonsaiPage({
       data-id="bonsai-screen"
       className="screen-fade mx-auto flex w-full max-w-[var(--topbar-width)] flex-1 flex-col gap-4 p-5"
     >
-      <header className="mx-auto flex w-full max-w-[var(--content-width)] items-center justify-between">
+      <header className="mx-auto flex w-full max-w-[var(--content-width)] flex-col gap-2">
         <Button
           data-id="bonsai-back"
           variant="ghost"
           size="sm"
           onClick={onBack}
           aria-label="Back to mantra list"
-          className="inline-flex items-center gap-2"
+          className="inline-flex w-fit items-center gap-2 self-start"
         >
           <ArrowLeft className="h-4 w-4" />
           <span className="font-serif-zen tracking-wide">Back</span>
         </Button>
-        <h1 className="font-serif-zen text-[1.15rem] font-medium tracking-wide text-foreground">
+        <h1 className="text-center font-serif-zen text-[1.15rem] font-medium text-foreground">
           Sit with your bonsai
         </h1>
-        <span className="w-[68px]" aria-hidden="true" /> {/* spacer to balance back button */}
       </header>
 
       <DndContext
@@ -193,7 +194,7 @@ export function BonsaiPage({
               width={overlayWidthPx}
               height={overlayHeightPx}
               xmlns="http://www.w3.org/2000/svg"
-              style={{ pointerEvents: 'none', overflow: 'visible' }}
+              style={{ pointerEvents: "none", overflow: "visible" }}
             >
               <LanternBody
                 mantra={draggingMantra}
@@ -214,10 +215,7 @@ export function BonsaiPage({
         onOpen={openSlot}
       />
 
-      <MantraOverlay
-        mantra={openMantra}
-        onClose={() => setOpenMantra(null)}
-      />
+      <MantraOverlay mantra={openMantra} onClose={() => setOpenMantra(null)} />
     </main>
   );
 }
