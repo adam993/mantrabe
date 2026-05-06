@@ -30,7 +30,18 @@ concurrency:
 
 jobs:
   build:
-    runs-on: macos-14
+    # macos-26 (Xcode 26 / Swift 6.2) is required because Capacitor 8.3+
+    # ships its core framework as a prebuilt binary xcframework compiled
+    # with Swift 6.2. Older compilers can't read its swiftinterface, so
+    # all three plugin compiles (App / Preferences / LocalNotifications)
+    # die together when they `import Capacitor`. Confirmed by inspecting
+    # https://github.com/ionic-team/capacitor-swift-pm/releases/download/
+    # 8.3.1/Capacitor.xcframework.zip — the swiftinterface header reads
+    # "Apple Swift version 6.2 ... swiftlang-6.2.0.19.9".
+    #
+    # macos-latest is currently pinned to macos-15 (Xcode 16 / Swift 6.0),
+    # which is also too old, so we pin explicitly to macos-26.
+    runs-on: macos-26
     # Push to master only triggers a build when the commit message opts in
     # with `[ios]`. workflow_dispatch always runs.
     if: >-

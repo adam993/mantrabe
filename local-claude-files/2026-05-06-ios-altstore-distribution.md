@@ -135,6 +135,15 @@ refuses to install:
   is no Podfile, no `pod install`, no `.xcworkspace` at the top level.
   The build uses `-project ios/App/App.xcodeproj` and SPM deps live in
   `ios/App/CapApp-SPM/Package.swift`.
+- **`SwiftCompile failed` for AppPlugin / PreferencesPlugin /
+  LocalNotificationsPlugin all at once, no obvious error in the tail**:
+  this is a Swift toolchain mismatch with Capacitor's prebuilt binary
+  framework. Capacitor 8.3.x ships `Capacitor.xcframework` compiled
+  with **Swift 6.2** (Xcode 26). Older compilers can't read the
+  swiftinterface and bail at `import Capacitor` from every plugin —
+  hence all three failing together. The runner MUST be `macos-26` (or
+  newer). Confirm by extracting the framework's swiftinterface header:
+  `unzip -p Capacitor.xcframework.zip 'Capacitor.xcframework/ios-arm64/Capacitor.framework/Modules/Capacitor.swiftmodule/arm64-apple-ios.swiftinterface' | head -2`
 - **AltStore says "permissions mismatch"**: a plugin added a usage
   string to `Info.plist` but the source JSON wasn't updated. Add the
   entry under `appPermissions.privacy` in `ios-release.yml`.
