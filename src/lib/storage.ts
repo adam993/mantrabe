@@ -18,6 +18,10 @@ import type { EntryKind, Mantra } from '@/types/mantra';
 
 const KEY = 'mantrabe.mantras.v1';
 const PERMISSION_KEY = 'mantrabe.notifPermissionAsked.v1';
+// User clicked "Already done" on the OEM autostart row in the
+// reliability dialog — we can't programmatically verify that the OEM
+// killer has been turned off, so we trust the user and stop nagging.
+const OEM_AUTOSTART_DONE_KEY = 'mantrabe.reliabilityOemDone.v1';
 
 async function readRaw(key: string): Promise<string | null> {
   if (isNative()) {
@@ -132,6 +136,13 @@ export async function getPermissionAsked(): Promise<boolean> {
 }
 export async function setPermissionAsked(): Promise<void> {
   await writeRaw(PERMISSION_KEY, '1');
+}
+
+export async function getOemAutostartDone(): Promise<boolean> {
+  return (await readRaw(OEM_AUTOSTART_DONE_KEY)) === '1';
+}
+export async function setOemAutostartDone(value: boolean): Promise<void> {
+  await writeRaw(OEM_AUTOSTART_DONE_KEY, value ? '1' : '0');
 }
 
 // --- Supabase sync layer -----------------------------------------------------

@@ -45,11 +45,32 @@ const DEEP_LINK_FILTER = `${DEEP_LINK_SENTINEL}
                 <data android:scheme="com.mantrabe.app" android:host="auth-callback" />
             </intent-filter>`;
 
-const PERM_SENTINEL = '<!-- mantrabe-native-permissions -->';
-const PERM_BLOCK = `${PERM_SENTINEL}
+// USE_EXACT_ALARM is API 33+ and a normal-protection permission for
+// alarm/reminder apps — granted at install, can't be revoked without
+// uninstall. SCHEDULE_EXACT_ALARM covers API 31–32 and *can* be revoked
+// by the user via "Alarms & reminders"; the scheduler falls back to
+// inexact mode if it ever loses that grant.
+//
+// REQUEST_IGNORE_BATTERY_OPTIMIZATIONS is what lets us launch the
+// system dialog asking the user to whitelist Mantrabe from Doze. We
+// can't bypass Doze without this; setExactAndAllowWhileIdle still has
+// rate limits that the OEM battery savers exploit. Holding it doesn't
+// auto-whitelist us — it only unlocks the dialog.
+//
+// The block uses paired start/end sentinels so this script can REPLACE
+// an out-of-date block on a stale android/ checkout (single-line
+// sentinels would be detected as "already present" and we'd silently
+// keep the old set of permissions).
+const PERM_SENTINEL_START = '<!-- mantrabe-native-permissions:start -->';
+const PERM_SENTINEL_END = '<!-- mantrabe-native-permissions:end -->';
+const PERM_BLOCK = `${PERM_SENTINEL_START}
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />`;
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    ${PERM_SENTINEL_END}`;
 
 const RECEIVER_SENTINEL = '<!-- mantrabe-native-receivers -->';
 const RECEIVER_BLOCK = `${RECEIVER_SENTINEL}
@@ -130,7 +151,34 @@ function patchManifest() {
   }
 
   // 2. Permissions — placed alongside the auto-generated INTERNET line.
-  if (!contents.includes(PERM_SENTINEL)) {
+  //    Idempotent across version bumps: if a previous start/end-bracketed
+  //    block exists, replace it; if a pre-bracket-era single-sentinel
+  //    block exists, scrub it; otherwise insert fresh after INTERNET.
+  const oldSingleSentinel = '<!-- mantrabe-native-permissions -->';
+  const bracketed = new RegExp(
+    `${PERM_SENTINEL_START.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}[\\s\\S]*?${PERM_SENTINEL_END.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}`,
+  );
+  if (bracketed.test(contents)) {
+    const next = contents.replace(bracketed, PERM_BLOCK);
+    if (next !== contents) {
+      contents = next;
+      changed = true;
+      console.log('apply-android-customizations: native permissions refreshed.');
+    } else {
+      console.log('apply-android-customizations: native permissions already up to date.');
+    }
+  } else {
+    // Strip the legacy single-sentinel block + everything from there
+    // through the last <uses-permission> on a contiguous run. Cheap
+    // approximation: drop the sentinel line and the following 3 perm
+    // lines (the v1 set: BOOT_COMPLETED, POST_NOTIFICATIONS, WAKE_LOCK).
+    if (contents.includes(oldSingleSentinel)) {
+      contents = contents.replace(
+        new RegExp(`\\s*${oldSingleSentinel.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}(?:\\s*<uses-permission[^/]*/>)+`),
+        '',
+      );
+      console.log('apply-android-customizations: stripped legacy permission block.');
+    }
     const next = contents.replace(
       /(<uses-permission android:name="android\.permission\.INTERNET"\s*\/>)/,
       `$1\n\n    ${PERM_BLOCK}`,
@@ -141,8 +189,6 @@ function patchManifest() {
     contents = next;
     changed = true;
     console.log('apply-android-customizations: native permissions inserted.');
-  } else {
-    console.log('apply-android-customizations: native permissions already present.');
   }
 
   // 3. Receivers — inserted before </application>.

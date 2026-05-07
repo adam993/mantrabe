@@ -27,9 +27,42 @@ export interface NativeMantra {
   soundId: string | null;
 }
 
+// Snapshot of every Android-side gate that affects whether reminders
+// actually fire. The reliability banner reads this on mount and after
+// the user returns from any settings deep-link.
+export interface ReliabilityStatus {
+  manufacturer: string;
+  brand: string;
+  model: string;
+  sdkInt: number;
+  exactAlarmsAllowed: boolean;
+  ignoringBatteryOptimizations: boolean;
+  // True when the OEM-specific "auto-start / protected apps" page
+  // resolves on this device. False on stock Android and on OEMs whose
+  // package names have rotated past our table — the JS layer falls
+  // back to the generic app-info link in that case.
+  oemAutostartAvailable: boolean;
+  // Hint that this brand is known for aggressive background killing
+  // even when permissions are healthy — surface the autostart nudge
+  // proactively rather than waiting for a missed reminder.
+  isAggressiveOem: boolean;
+}
+
 export interface MantraSchedulerPluginI {
   scheduleAll(opts: { mantras: NativeMantra[] }): Promise<{ count: number }>;
   cancelAll(): Promise<void>;
+  getReliabilityStatus(): Promise<ReliabilityStatus>;
+  requestIgnoreBatteryOptimizations(): Promise<{
+    alreadyExempt: boolean;
+    launched: boolean;
+  }>;
+  openExactAlarmSettings(): Promise<{ launched: boolean }>;
+  openOemAutostartSettings(): Promise<{
+    opened: boolean;
+    oemSpecific: boolean;
+    manufacturer: string;
+  }>;
+  openAppNotificationSettings(): Promise<{ launched: boolean }>;
 }
 
 export const MantraScheduler =

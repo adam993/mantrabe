@@ -197,6 +197,17 @@ public final class MantraScheduler {
 
     // ---- alarm wiring -----------------------------------------------------
 
+    // Returns true when the OS will honor setExactAndAllowWhileIdle.
+    // - API < 31: no permission concept, always allowed.
+    // - API 31+: gated by SCHEDULE_EXACT_ALARM (user-revocable) OR
+    //   USE_EXACT_ALARM (granted at install on API 33+ for alarm/reminder
+    //   apps); AlarmManager.canScheduleExactAlarms() is the unified gate.
+    public static boolean canScheduleExact(Context ctx) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true;
+        AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+        return am != null && am.canScheduleExactAlarms();
+    }
+
     public static void scheduleNext(Context ctx, JSONObject mantra) {
         try {
             long now = System.currentTimeMillis();
@@ -217,16 +228,47 @@ public final class MantraScheduler {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
             );
 
-            // setAndAllowWhileIdle is inexact (drift up to ~9 min in Doze)
-            // but doesn't need SCHEDULE_EXACT_ALARM. Drift is fine for
-            // mantras; precision-critical scheduling would force the
-            // permission prompt and the user-revocation surface.
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // Exact-and-while-idle is what bypasses Doze and produces an
+            // on-time fire; setAndAllowWhileIdle drifts up to ~9 minutes
+            // and is throttled to once per ~9 minutes per app, which
+            // visibly stalls minute-frequency mantras. We declare both
+            // USE_EXACT_ALARM (API 33+) and SCHEDULE_EXACT_ALARM (API
+            // 31–32) in the manifest; canScheduleExact() is the single
+            // gate that tells us if either is currently honored. Falls
+            // back to inexact whenever the user has revoked the API-32
+            // permission via "Alarms & reminders" — the alarm still
+            // fires, just within a Doze window.
+            if (canScheduleExact(ctx)) {
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, pi);
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, pi);
             } else {
                 am.set(AlarmManager.RTC_WAKEUP, next, pi);
             }
             Log.d(TAG, "Scheduled " + mantra.getString("id") + " for " + next);
+        } catch (SecurityException e) {
+            // Race: canScheduleExactAlarms returned true but the OS
+            // revoked the permission between the check and the call.
+            // Retry inexact so we never lose the alarm entirely.
+            Log.w(TAG, "scheduleNext: exact alarm denied, falling back to inexact", e);
+            try {
+                AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+                if (am == null) return;
+                int id = notificationId(mantra.getString("id"));
+                Intent intent = new Intent(ctx, MantraAlarmReceiver.class);
+                intent.putExtra(EXTRA_MANTRA_JSON, mantra.toString());
+                PendingIntent pi = PendingIntent.getBroadcast(
+                    ctx, id, intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+                );
+                long retryAt = computeNextOccurrence(mantra, System.currentTimeMillis());
+                if (retryAt == 0) return;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, retryAt, pi);
+                } else {
+                    am.set(AlarmManager.RTC_WAKEUP, retryAt, pi);
+                }
+            } catch (JSONException ignored) {}
         } catch (JSONException e) {
             Log.e(TAG, "scheduleNext: bad mantra json", e);
         }

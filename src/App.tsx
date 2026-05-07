@@ -3,6 +3,7 @@ import { AuthProvider } from '@/lib/auth';
 import { useMantras } from '@/hooks/use-mantras';
 import { usePermission } from '@/hooks/use-permission';
 import { PermissionBanner } from '@/components/permission-banner';
+import { ReliabilityBanner } from '@/components/reliability-banner';
 import { MantraList } from '@/components/mantra-list';
 import { MantraEditor } from '@/components/mantra-editor';
 import { NotificationsIntro } from '@/components/notifications-intro';
@@ -149,7 +150,10 @@ function Shell() {
       className="mx-auto flex min-h-screen w-full flex-1 flex-col pt-[var(--safe-top)]"
     >
       {!hideChrome && (
-        <PermissionBanner permission={permission} onEnable={() => void request()} />
+        <>
+          <PermissionBanner permission={permission} onEnable={() => void request()} />
+          <ReliabilityBanner />
+        </>
       )}
       <SyncErrorToast error={syncError} />
       {screen.name === 'list' && (
