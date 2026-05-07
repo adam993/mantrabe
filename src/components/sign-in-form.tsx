@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/lib/auth';
+import { isNative } from '@/lib/platform';
 
 interface Props {
   /** `dialog` stacks fields above a full-width submit button. `inline`
@@ -238,6 +239,53 @@ export function SignInForm({ layout, idPrefix, resetSignal }: Props) {
 
   // --- Code mode, after we've sent the email ---
   if (emailSent) {
+    // On native, the email is sent in redirect-bound mode (see
+    // signInWithEmail in src/lib/auth.tsx) — the server refuses
+    // verifyOtp on the 6-digit code, and the link in the email opens
+    // com.mantrabe.app://auth-callback which the appUrlOpen handler
+    // turns into a session. So drop the code input entirely and just
+    // tell the user to tap the link.
+    if (isNative()) {
+      return (
+        <div data-id={`${idPrefix}-verify-native`} className="flex flex-col gap-3">
+          {ModeToggle}
+
+          <div
+            data-id={`${idPrefix}-email-sent`}
+            className="rounded-md border border-border bg-muted px-4 py-3 text-sm"
+          >
+            We emailed a sign-in link to{' '}
+            <span className="font-medium">{email}</span>. Tap the link to
+            finish signing in — Mantrabe will reopen automatically.
+          </div>
+
+          <button
+            data-id={`${idPrefix}-resend`}
+            type="button"
+            className="self-start text-sm text-muted-foreground underline-offset-2 hover:underline disabled:opacity-50"
+            disabled={busy}
+            onClick={() => {
+              setEmailSent(false);
+              setCode('');
+              setError(null);
+            }}
+          >
+            Use a different email
+          </button>
+
+          {error && (
+            <p
+              data-id={`${idPrefix}-error`}
+              className="text-sm text-destructive"
+              role="alert"
+            >
+              {error}
+            </p>
+          )}
+        </div>
+      );
+    }
+
     return (
       <div data-id={`${idPrefix}-verify`} className="flex flex-col gap-3">
         {ModeToggle}
@@ -368,7 +416,12 @@ export function SignInForm({ layout, idPrefix, resetSignal }: Props) {
           type="submit"
           disabled={busy || !email.trim()}
         >
-          <Mail className="h-4 w-4" /> {isDialog ? 'Email me a code' : 'Send code'}
+          <Mail className="h-4 w-4" />{' '}
+          {isNative()
+            ? 'Email me a sign-in link'
+            : isDialog
+              ? 'Email me a code'
+              : 'Send code'}
         </Button>
       </form>
 

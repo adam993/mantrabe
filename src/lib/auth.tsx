@@ -134,16 +134,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithEmail = React.useCallback(async (email: string) => {
     if (!supabase) throw new Error('Supabase not configured.');
-    // IMPORTANT: do NOT pass emailRedirectTo here. When it's present,
-    // Supabase issues the OTP in "redirect-bound" mode — the server
-    // expects the magic-link redirect handshake to consume it, and
-    // /verify with the 6-digit token returns "Token has expired or is
-    // invalid" even when the code is correct and unexpired. Omitting it
-    // gives us a pure email-OTP token that verifyOtp can validate
-    // directly. The template should also be Token-only (no
-    // {{ .ConfirmationURL }}) to avoid email-scanner prefetch consuming
-    // the same underlying token slot.
-    const { error } = await supabase.auth.signInWithOtp({ email });
+    // Two-mode dispatch by platform:
+    //
+    //   Web (no emailRedirectTo): Supabase issues a pure email-OTP token
+    //     that verifyOtp(6-digit) can validate directly. The email
+    //     template must be Token-only (no {{ .ConfirmationURL }}) to
+    //     avoid scanner prefetch consuming the token before the user
+    //     types it. UI shows the 6-digit code input.
+    //
+    //   Native (emailRedirectTo set): Supabase issues a redirect-bound
+    //     OTP. Tapping the link in the email goes Supabase → 302 →
+    //     com.mantrabe.app://auth-callback#access_token=… and the
+    //     intent filter routes it back into the app, where the
+    //     appUrlOpen listener below calls setSession. verifyOtp(6-digit)
+    //     no longer works in this branch — the server refuses the same
+    //     token a second time — so the UI must hide the code input on
+    //     native. The corresponding redirect URL must be allowlisted in
+    //     Supabase Auth → URL Configuration → Redirect URLs.
+    const options = isNative() ? { emailRedirectTo: NATIVE_REDIRECT } : undefined;
+    const { error } = await supabase.auth.signInWithOtp({ email, options });
     if (error) {
       // Keep the raw error in the console for diagnosis — quota vs SMTP
       // creds vs Brevo outage all hit the same user-facing branch.
