@@ -33,6 +33,8 @@ const DST_RES = path.join(ROOT, 'android', 'app', 'src', 'main', 'res');
 const SRC_JAVA = path.join(ROOT, 'android-native-src', 'main', 'java');
 const DST_JAVA = path.join(ROOT, 'android', 'app', 'src', 'main', 'java');
 const MANIFEST = path.join(ROOT, 'android', 'app', 'src', 'main', 'AndroidManifest.xml');
+const APP_GRADLE = path.join(ROOT, 'android', 'app', 'build.gradle');
+const KEYSTORE = path.join(ROOT, 'keystore', 'mantrabe-debug.keystore');
 
 const DEEP_LINK_SENTINEL = '<!-- mantrabe-deep-link -->';
 const DEEP_LINK_FILTER = `${DEEP_LINK_SENTINEL}
@@ -63,6 +65,29 @@ const RECEIVER_BLOCK = `${RECEIVER_SENTINEL}
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>`;
+
+// Pin the debug-signing identity to the keystore committed at
+// keystore/mantrabe-debug.keystore so local and CI builds produce APKs
+// with the *same* signature. Without this, gradle falls through to
+// ~/.android/debug.keystore — which differs between every dev machine
+// and every fresh CI runner — and devices then refuse to install one
+// build over another with INSTALL_FAILED_UPDATE_INCOMPATIBLE.
+//
+// Debug-grade only: alias and both passwords are the well-known
+// "android" defaults, intentional so the keystore can live in-repo
+// without ceremony. The release buildType is irrelevant here — we only
+// ship debug APKs (AltStore / sideload), and a release config would
+// need a real upload key anyway.
+const SIGNING_SENTINEL = '// mantrabe-debug-signing';
+const SIGNING_BLOCK = `${SIGNING_SENTINEL}
+    signingConfigs {
+        debug {
+            storeFile file('../../keystore/mantrabe-debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }`;
 
 function copyTree(src, dst) {
   if (!fs.existsSync(src)) return;
@@ -139,9 +164,40 @@ function patchManifest() {
   if (changed) fs.writeFileSync(MANIFEST, contents);
 }
 
+function patchAppGradle() {
+  if (!fs.existsSync(APP_GRADLE)) {
+    console.warn(
+      `apply-android-customizations: ${path.relative(ROOT, APP_GRADLE)} not found — skipping signing-config patch.`,
+    );
+    return;
+  }
+  if (!fs.existsSync(KEYSTORE)) {
+    throw new Error(
+      `apply-android-customizations: missing ${path.relative(ROOT, KEYSTORE)} — debug signing key must be checked into the repo.`,
+    );
+  }
+  let contents = fs.readFileSync(APP_GRADLE, 'utf8');
+  if (contents.includes(SIGNING_SENTINEL)) {
+    console.log('apply-android-customizations: signing config already present.');
+    return;
+  }
+  // Anchor before the buildTypes block so signingConfigs.debug is
+  // declared in scope when gradle resolves the implicit debug buildType.
+  const next = contents.replace(
+    /(\n\s*)buildTypes\s*\{/,
+    `\n    ${SIGNING_BLOCK}$&`,
+  );
+  if (next === contents) {
+    throw new Error('apply-android-customizations: failed to find buildTypes block in build.gradle');
+  }
+  fs.writeFileSync(APP_GRADLE, next);
+  console.log('apply-android-customizations: signing config inserted.');
+}
+
 console.log('apply-android-customizations: copying res overrides…');
 copyTree(SRC_RES, DST_RES);
 console.log('apply-android-customizations: copying native java sources…');
 copyTree(SRC_JAVA, DST_JAVA);
 patchManifest();
+patchAppGradle();
 console.log('apply-android-customizations: done.');
